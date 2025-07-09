@@ -82,12 +82,20 @@ class MapManager {
             // Try to initialize iTwin Platform integration
             await this.initializeiTwinIntegration();
             
-            // Basic lighting 
+            // Enhanced lighting and rendering
             this.cesiumViewer.scene.globe.enableLighting = true;
             this.cesiumViewer.scene.globe.showWaterEffect = true;
+            this.cesiumViewer.scene.globe.depthTestAgainstTerrain = true;
             
-            // Allow close zoom
-            this.cesiumViewer.scene.screenSpaceCameraController.minimumZoomDistance = 10.0;
+            // Enable high-quality features for better visualization
+            this.cesiumViewer.shadows = true;
+            this.cesiumViewer.terrainShadows = Cesium.ShadowMode.ENABLED;
+            this.cesiumViewer.scene.fog.enabled = true;
+            this.cesiumViewer.scene.fog.density = 0.0002;
+            
+            // Allow close zoom down to 1 meter for stock resolution
+            this.cesiumViewer.scene.screenSpaceCameraController.minimumZoomDistance = 1.0;
+            this.cesiumViewer.scene.screenSpaceCameraController.maximumZoomDistance = 40075017;
             
             // Wait for the globe to load before creating buildings
             setTimeout(() => {
@@ -152,13 +160,31 @@ class MapManager {
     }
     
     setupStandardTerrain() {
-        // Fallback to standard imagery when iTwin is not available
-        this.cesiumViewer.scene.imageryLayers.removeAll();
-        this.cesiumViewer.scene.imageryLayers.addImageryProvider(
-            new Cesium.TileMapServiceImageryProvider({
-                url: Cesium.buildModuleUrl('Assets/Textures/NaturalEarthII')
-            })
-        );
+        // Use Cesium World Terrain for high-resolution elevation data
+        try {
+            this.cesiumViewer.terrainProvider = Cesium.createWorldTerrain({
+                requestWaterMask: true,
+                requestVertexNormals: true
+            });
+            
+            // Enable depth testing against terrain for accurate 3D rendering
+            this.cesiumViewer.scene.globe.depthTestAgainstTerrain = true;
+            
+            // Enable high-quality shadows
+            this.cesiumViewer.shadows = true;
+            this.cesiumViewer.terrainShadows = Cesium.ShadowMode.ENABLED;
+            
+            console.log('High-resolution World Terrain loaded');
+        } catch (error) {
+            console.log('World Terrain not available, using default imagery');
+            // Fallback to basic imagery if World Terrain fails
+            this.cesiumViewer.scene.imageryLayers.removeAll();
+            this.cesiumViewer.scene.imageryLayers.addImageryProvider(
+                new Cesium.TileMapServiceImageryProvider({
+                    url: Cesium.buildModuleUrl('Assets/Textures/NaturalEarthII')
+                })
+            );
+        }
     }
     
     async loadiTwinDataForLocation(latitude, longitude) {

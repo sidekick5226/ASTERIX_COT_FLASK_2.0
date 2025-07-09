@@ -60,10 +60,10 @@ class MapManager {
                 infoBox: true,
                 selectionIndicator: true,
                 shouldAnimate: true,
-                // Use OpenStreetMap as reliable base layer
-                imageryProvider: new Cesium.OpenStreetMapImageryProvider({
-                    url: 'https://tile.openstreetmap.org/',
-                    credit: '© OpenStreetMap contributors'
+                // Use Esri World Imagery for satellite view
+                imageryProvider: new Cesium.ArcGisMapServerImageryProvider({
+                    url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer',
+                    credit: 'Esri, DigitalGlobe, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community'
                 })
             });
             
@@ -77,25 +77,25 @@ class MapManager {
                 }
             });
             
-            // Enable lighting for better visual effect
+            // Enable lighting for realistic satellite view
             this.cesiumViewer.scene.globe.enableLighting = true;
             this.cesiumViewer.scene.globe.dynamicAtmosphereLighting = true;
+            this.cesiumViewer.scene.globe.atmosphereHueShift = 0.0;
+            this.cesiumViewer.scene.globe.atmosphereSaturationShift = 0.1;
+            this.cesiumViewer.scene.globe.atmosphereBrightnessShift = 0.1;
             
-            // Set globe properties for military/surveillance style
-            this.cesiumViewer.scene.globe.baseColor = Cesium.Color.NAVY.withAlpha(0.1);
-            this.cesiumViewer.scene.globe.showWaterEffect = true;
-            
-            // Configure scene for surveillance
+            // Configure for satellite surveillance view
             this.cesiumViewer.scene.skyBox.show = true;
             this.cesiumViewer.scene.sun.show = true;
             this.cesiumViewer.scene.moon.show = true;
             this.cesiumViewer.scene.skyAtmosphere.show = true;
+            this.cesiumViewer.scene.fog.enabled = false; // Disable fog for clearer satellite view
             
         } catch (error) {
             console.error('Error initializing Cesium:', error);
             console.log('Trying fallback Cesium configuration...');
             
-            // Fallback: Use most basic configuration
+            // Fallback: Use satellite imagery with basic configuration
             try {
                 this.cesiumViewer = new Cesium.Viewer('cesium-map', {
                     baseLayerPicker: false,
@@ -109,7 +109,11 @@ class MapManager {
                     vrButton: false,
                     infoBox: false,
                     selectionIndicator: false,
-                    shouldAnimate: false
+                    shouldAnimate: false,
+                    // Use satellite imagery even in fallback
+                    imageryProvider: new Cesium.ArcGisMapServerImageryProvider({
+                        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'
+                    })
                 });
                 
                 // Set basic camera view

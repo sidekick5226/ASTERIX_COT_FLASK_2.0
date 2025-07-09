@@ -47,7 +47,7 @@ class MapManager {
     }
     
     async initCesiumMap() {
-        // Initialize Cesium map (3D) with simplified, reliable configuration
+        // Initialize Cesium map (3D) with reliable imagery provider
         try {
             this.cesiumViewer = new Cesium.Viewer('cesium-map', {
                 baseLayerPicker: false,
@@ -61,7 +61,11 @@ class MapManager {
                 vrButton: false,
                 infoBox: true,
                 selectionIndicator: true,
-                shouldAnimate: true
+                shouldAnimate: true,
+                // Use OpenStreetMap base layer that doesn't require authentication
+                baseLayer: Cesium.ImageryLayer.fromProviderAsync(
+                    Cesium.OpenStreetMapImageryProvider.fromUrl('https://a.tile.openstreetmap.org/')
+                )
             });
             
             // Set initial camera position over North America
@@ -74,6 +78,11 @@ class MapManager {
                 }
             });
             
+            // Ensure the globe is visible
+            this.cesiumViewer.scene.globe.show = true;
+            this.cesiumViewer.scene.skyBox.show = true;
+            this.cesiumViewer.scene.skyAtmosphere.show = true;
+            
             // Basic lighting 
             this.cesiumViewer.scene.globe.enableLighting = true;
             this.cesiumViewer.scene.globe.showWaterEffect = true;
@@ -81,12 +90,48 @@ class MapManager {
             // Allow close zoom
             this.cesiumViewer.scene.screenSpaceCameraController.minimumZoomDistance = 10.0;
             
-            // Create some simple 3D buildings for demonstration
-            this.createSimpleBuildings();
+            // Wait for the globe to load before creating buildings
+            setTimeout(() => {
+                this.createSimpleBuildings();
+            }, 1000);
             
             console.log('Cesium 3D Map initialized successfully');
+            
+            // Force a render to ensure the globe appears
+            this.cesiumViewer.scene.requestRender();
+            
         } catch (error) {
             console.error('Error initializing Cesium map:', error);
+            console.log('Trying fallback Cesium configuration...');
+            
+            // Fallback: Most basic configuration
+            try {
+                this.cesiumViewer = new Cesium.Viewer('cesium-map', {
+                    baseLayerPicker: false,
+                    geocoder: false,
+                    homeButton: false,
+                    sceneModePicker: false,
+                    navigationHelpButton: false,
+                    animation: false,
+                    timeline: false,
+                    fullscreenButton: false,
+                    vrButton: false,
+                    infoBox: false,
+                    selectionIndicator: false,
+                    shouldAnimate: false
+                });
+                
+                // Set basic view
+                this.cesiumViewer.camera.setView({
+                    destination: Cesium.Cartesian3.fromDegrees(-95.0, 39.0, 2000000)
+                });
+                
+                console.log('Cesium initialized with fallback configuration');
+                
+            } catch (fallbackError) {
+                console.error('Cesium fallback also failed:', fallbackError);
+                this.cesiumViewer = null;
+            }
         }
     }
     

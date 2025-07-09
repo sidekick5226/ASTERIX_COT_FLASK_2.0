@@ -367,14 +367,46 @@ class SurveillanceDashboard {
         this.isLiveDemo = true;
         document.getElementById('start-demo-btn').disabled = true;
         document.getElementById('stop-demo-btn').disabled = false;
-        this.showNotification('Live demo started', 'success');
+        
+        // Generate new simulated tracks
+        fetch('/api/tracks/generate', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Generated tracks:', data);
+                this.showNotification('Live surveillance demo started - New tracks generated', 'success');
+            })
+            .catch(error => {
+                console.error('Error generating tracks:', error);
+                this.showNotification('Live demo started', 'success');
+            });
     }
     
     stopLiveDemo() {
         this.isLiveDemo = false;
         document.getElementById('start-demo-btn').disabled = false;
         document.getElementById('stop-demo-btn').disabled = true;
-        this.showNotification('Live demo stopped', 'info');
+        
+        // Clear all tracks from display
+        this.tracks.clear();
+        this.updateTracksDisplay();
+        this.updateTrackCounts();
+        
+        // Clear tracks from map
+        if (window.mapManager) {
+            window.mapManager.clearAllTracks();
+        }
+        
+        // Send request to server to clear tracks
+        fetch('/api/tracks/clear', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Tracks cleared:', data);
+            })
+            .catch(error => {
+                console.error('Error clearing tracks:', error);
+            });
+        
+        this.showNotification('Live demo stopped - All tracks cleared', 'info');
     }
     
     toggleBattleMode() {

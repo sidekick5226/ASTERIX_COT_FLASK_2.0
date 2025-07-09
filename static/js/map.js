@@ -4,8 +4,10 @@ class MapManager {
         this.leafletMap = null;
         this.cesiumViewer = null;
         this.trackMarkers = new Map();
+        this.trackTrails = new Map(); // Store track trails for movement visualization
         this.is3DMode = false;
         this.tracks = [];
+        this.showTrails = true; // ATAK-CIV style movement trails
         
         this.init();
     }
@@ -43,11 +45,13 @@ class MapManager {
     }
     
     initCesiumMap() {
-        // Initialize Cesium map (3D)
+        // Initialize Cesium map (3D) with fallback
         try {
             this.cesiumViewer = new Cesium.Viewer('cesium-map', {
-                terrainProvider: Cesium.createWorldTerrain(),
-                imageryProvider: new Cesium.IonImageryProvider({ assetId: 3812 }),
+                // Use a simple imagery provider that doesn't require tokens
+                imageryProvider: new Cesium.OpenStreetMapImageryProvider({
+                    url: 'https://a.tile.openstreetmap.org/'
+                }),
                 baseLayerPicker: false,
                 geocoder: false,
                 homeButton: false,
@@ -58,7 +62,8 @@ class MapManager {
                 fullscreenButton: false,
                 vrButton: false,
                 infoBox: false,
-                selectionIndicator: false
+                selectionIndicator: false,
+                terrainProvider: Cesium.Ellipsoid.WGS84
             });
             
             // Set initial camera position
@@ -132,17 +137,66 @@ class MapManager {
     }
     
     updateLeafletTracks(tracks) {
-        // Clear existing markers
-        this.trackMarkers.forEach(marker => {
-            this.leafletMap.removeLayer(marker);
-        });
-        this.trackMarkers.clear();
-        
-        // Add new markers
         tracks.forEach(track => {
-            const marker = this.createLeafletMarker(track);
-            marker.addTo(this.leafletMap);
-            this.trackMarkers.set(track.track_id, marker);
+            const trackId = track.track_id;
+            const newPosition = [track.latitude, track.longitude];
+            
+            // Handle existing marker
+            if (this.trackMarkers.has(trackId)) {
+                const marker = this.trackMarkers.get(trackId);
+                
+                // Store previous position for trail
+                const oldPosition = marker.getLatLng();
+                this.addToTrail(trackId, [oldPosition.lat, oldPosition.lng]);
+                
+                // Update marker position with smooth animation
+                marker.setLatLng(newPosition);
+                
+                // Update popup content  
+                const popupContent = `
+                    <div style="color: #000; min-width: 200px;">
+                        <h6 style="color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">
+                            ${track.callsign || track.track_id}
+                        </h6>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.85rem;">
+                            <div>
+                                <strong>Type:</strong><br>${track.type}
+                            </div>
+                            <div>
+                                <strong>Status:</strong><br><span style="color: ${track.status === 'Active' ? '#10b981' : '#ef4444'}">${track.status}</span>
+                            </div>
+                            <div>
+                                <strong>Position:</strong><br>${track.latitude.toFixed(4)}, ${track.longitude.toFixed(4)}
+                            </div>
+                            ${track.altitude ? `<div><strong>Altitude:</strong><br>${Math.round(track.altitude)} ft</div>` : ''}
+                            ${track.speed ? `<div><strong>Speed:</strong><br>${Math.round(track.speed)} kts</div>` : ''}
+                            ${track.heading ? `<div><strong>Heading:</strong><br>${Math.round(track.heading)}°</div>` : ''}
+                        </div>
+                        <div style="margin-top: 10px; padding-top: 5px; border-top: 1px solid #e2e8f0; font-size: 0.75rem; color: #64748b;">
+                            Last Update: ${new Date(track.last_updated).toLocaleString()}
+                        </div>
+                    </div>
+                `;
+                marker.setPopupContent(popupContent);
+            } else {
+                // Create new marker
+                const marker = this.createLeafletMarker(track);
+                marker.addTo(this.leafletMap);
+                this.trackMarkers.set(trackId, marker);
+                
+                // Initialize trail
+                this.trackTrails.set(trackId, []);
+            }
+        });
+        
+        // Remove markers for tracks that no longer exist
+        const activeTrackIds = new Set(tracks.map(t => t.track_id));
+        this.trackMarkers.forEach((marker, trackId) => {
+            if (!activeTrackIds.has(trackId)) {
+                this.leafletMap.removeLayer(marker);
+                this.trackMarkers.delete(trackId);
+                this.removeTrail(trackId);
+            }
         });
     }
     
@@ -168,18 +222,34 @@ class MapManager {
         
         // Add popup with track details
         const popupContent = `
-            <div style="color: #000;">
-                <h6>${track.track_id}</h6>
-                <p><strong>Type:</strong> ${track.type}</p>
-                <p><strong>Status:</strong> ${track.status}</p>
-                <p><strong>Position:</strong> ${track.latitude.toFixed(4)}, ${track.longitude.toFixed(4)}</p>
-                ${track.altitude ? `<p><strong>Altitude:</strong> ${track.altitude} ft</p>` : ''}
-                ${track.speed ? `<p><strong>Speed:</strong> ${track.speed} kts</p>` : ''}
-                ${track.heading ? `<p><strong>Heading:</strong> ${track.heading}°</p>` : ''}
-                <p><strong>Last Update:</strong> ${new Date(track.last_updated).toLocaleString()}</p>
+            <div style="color: #000; min-width: 200px;">
+                <h6 style="color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">
+                    ${track.callsign || track.track_id}
+                </h6>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.85rem;">
+                    <div>
+                        <strong>Type:</strong><br>${track.type}
+                    </div>
+                    <div>
+                        <strong>Status:</strong><br><span style="color: ${track.status === 'Active' ? '#10b981' : '#ef4444'}">${track.status}</span>
+                    </div>
+                    <div>
+                        <strong>Position:</strong><br>${track.latitude.toFixed(4)}, ${track.longitude.toFixed(4)}
+                    </div>
+                    ${track.altitude ? `<div><strong>Altitude:</strong><br>${Math.round(track.altitude)} ft</div>` : ''}
+                    ${track.speed ? `<div><strong>Speed:</strong><br>${Math.round(track.speed)} kts</div>` : ''}
+                    ${track.heading ? `<div><strong>Heading:</strong><br>${Math.round(track.heading)}°</div>` : ''}
+                </div>
+                <div style="margin-top: 10px; padding-top: 5px; border-top: 1px solid #e2e8f0; font-size: 0.75rem; color: #64748b;">
+                    Last Update: ${new Date(track.last_updated).toLocaleString()}
+                </div>
+                <div style="margin-top: 8px;">
+                    <button onclick="dashboard.trackOnMap('${track.track_id}')" style="background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">
+                        Center on Map
+                    </button>
+                </div>
             </div>
         `;
-        
         marker.bindPopup(popupContent);
         
         return marker;
@@ -303,6 +373,23 @@ class MapManager {
                 this.leafletMap.invalidateSize();
                 this.updateLeafletTracks(this.tracks);
             }, 100);
+        }
+    }
+    
+    clearAllTracks() {
+        this.tracks = [];
+        
+        // Clear Leaflet markers
+        if (this.leafletMap) {
+            this.trackMarkers.forEach(marker => {
+                this.leafletMap.removeLayer(marker);
+            });
+            this.trackMarkers.clear();
+        }
+        
+        // Clear Cesium entities
+        if (this.cesiumViewer) {
+            this.cesiumViewer.entities.removeAll();
         }
     }
     

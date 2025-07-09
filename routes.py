@@ -4,6 +4,7 @@ from app import app, socketio, db
 from models import Track, Event, NetworkConfig
 from datetime import datetime
 import json
+import math
 import random
 import threading
 import time
@@ -40,6 +41,46 @@ def get_track(track_id):
     if track:
         return jsonify(track.to_dict())
     return jsonify({'error': 'Track not found'}), 404
+
+@app.route('/api/tracks/clear', methods=['POST'])
+def clear_tracks():
+    """Clear all tracks from the system"""
+    try:
+        # Delete all tracks
+        Track.query.delete()
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'All tracks cleared'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@app.route('/api/tracks/generate', methods=['POST'])
+def generate_tracks():
+    """Generate new simulated tracks"""
+    try:
+        # Clear existing tracks first
+        Track.query.delete()
+        
+        # Generate new tracks
+        generate_simulated_track_data()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'New tracks generated'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
 
 @app.route('/api/events')
 def get_events():
@@ -142,21 +183,48 @@ def update_tracks_realtime():
                 updated_tracks = []
                 
                 for track in tracks:
-                    # Simulate movement
-                    track.latitude += random.uniform(-0.001, 0.001)
-                    track.longitude += random.uniform(-0.001, 0.001)
-                    track.heading = (track.heading + random.uniform(-5, 5)) % 360
-                    track.speed = max(0, track.speed + random.uniform(-10, 10))
-                    track.last_updated = datetime.utcnow()
+                    # Realistic movement based on speed and heading
+                    speed_knots = track.speed or 100  # Default speed if None
+                    heading_rad = math.radians(track.heading or 0)
                     
+                    # Convert speed from knots to degrees per second
+                    # 1 knot ≈ 0.000514444 degrees/second at equator
+                    # Update every 2 seconds, so multiply by 2
+                    speed_deg_per_update = (speed_knots * 0.000514444) * 2
+                    
+                    # Calculate movement based on heading
+                    lat_change = speed_deg_per_update * math.cos(heading_rad)
+                    lon_change = speed_deg_per_update * math.sin(heading_rad)
+                    
+                    # Apply movement with some randomness for realism
+                    track.latitude += lat_change + random.uniform(-0.0002, 0.0002)
+                    track.longitude += lon_change + random.uniform(-0.0002, 0.0002)
+                    
+                    # Gradual heading changes (like real vehicles)
+                    heading_change = random.uniform(-3, 3)
+                    track.heading = (track.heading + heading_change) % 360
+                    
+                    # More realistic speed changes
+                    if track.track_type == 'Aircraft':
+                        speed_change = random.uniform(-20, 20)
+                        track.speed = max(150, min(600, track.speed + speed_change))
+                    elif track.track_type == 'Vessel':
+                        speed_change = random.uniform(-5, 5)
+                        track.speed = max(5, min(40, track.speed + speed_change))
+                    else:  # Vehicle
+                        speed_change = random.uniform(-10, 10)
+                        track.speed = max(10, min(80, track.speed + speed_change))
+                    
+                    track.last_updated = datetime.utcnow()
                     updated_tracks.append(track.to_dict())
                     
                     # Occasionally create events
-                    if random.random() < 0.1:  # 10% chance
+                    if random.random() < 0.05:  # 5% chance
+                        event_types = ['Position Update', 'Speed Change', 'Course Change']
                         event = Event(
                             track_id=track.track_id,
-                            event_type='Position Update',
-                            description=f'Track {track.track_id} updated position'
+                            event_type=random.choice(event_types),
+                            description=f'Track {track.track_id}: {random.choice(event_types).lower()}'
                         )
                         db.session.add(event)
                 

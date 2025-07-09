@@ -45,13 +45,9 @@ class MapManager {
     }
     
     initCesiumMap() {
-        // Initialize Cesium map (3D) with fallback
+        // Initialize Cesium map (3D) with reliable configuration
         try {
             this.cesiumViewer = new Cesium.Viewer('cesium-map', {
-                // Use a simple imagery provider that doesn't require tokens
-                imageryProvider: new Cesium.OpenStreetMapImageryProvider({
-                    url: 'https://a.tile.openstreetmap.org/'
-                }),
                 baseLayerPicker: false,
                 geocoder: false,
                 homeButton: false,
@@ -61,26 +57,82 @@ class MapManager {
                 timeline: false,
                 fullscreenButton: false,
                 vrButton: false,
-                infoBox: false,
-                selectionIndicator: false,
-                terrainProvider: Cesium.Ellipsoid.WGS84
+                infoBox: true,
+                selectionIndicator: true,
+                shouldAnimate: true,
+                // Use OpenStreetMap as reliable base layer
+                imageryProvider: new Cesium.OpenStreetMapImageryProvider({
+                    url: 'https://tile.openstreetmap.org/',
+                    credit: '© OpenStreetMap contributors'
+                })
             });
             
-            // Set initial camera position
+            // Set initial camera position over North America for surveillance
             this.cesiumViewer.camera.setView({
-                destination: Cesium.Cartesian3.fromDegrees(-74.0, 40.0, 100000),
+                destination: Cesium.Cartesian3.fromDegrees(-95.0, 39.0, 2000000), // Center of North America
                 orientation: {
                     heading: 0.0,
-                    pitch: -Cesium.Math.PI_OVER_FOUR,
+                    pitch: -Cesium.Math.PI_OVER_SIX, // Less steep angle for better view
                     roll: 0.0
                 }
             });
             
-            // Disable default click behavior
-            this.cesiumViewer.cesiumWidget.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
+            // Enable lighting for better visual effect
+            this.cesiumViewer.scene.globe.enableLighting = true;
+            this.cesiumViewer.scene.globe.dynamicAtmosphereLighting = true;
+            
+            // Set globe properties for military/surveillance style
+            this.cesiumViewer.scene.globe.baseColor = Cesium.Color.NAVY.withAlpha(0.1);
+            this.cesiumViewer.scene.globe.showWaterEffect = true;
+            
+            // Configure scene for surveillance
+            this.cesiumViewer.scene.skyBox.show = true;
+            this.cesiumViewer.scene.sun.show = true;
+            this.cesiumViewer.scene.moon.show = true;
+            this.cesiumViewer.scene.skyAtmosphere.show = true;
             
         } catch (error) {
             console.error('Error initializing Cesium:', error);
+            console.log('Trying fallback Cesium configuration...');
+            
+            // Fallback: Use most basic configuration
+            try {
+                this.cesiumViewer = new Cesium.Viewer('cesium-map', {
+                    baseLayerPicker: false,
+                    geocoder: false,
+                    homeButton: false,
+                    sceneModePicker: false,
+                    navigationHelpButton: false,
+                    animation: false,
+                    timeline: false,
+                    fullscreenButton: false,
+                    vrButton: false,
+                    infoBox: false,
+                    selectionIndicator: false,
+                    shouldAnimate: false
+                });
+                
+                // Set basic camera view
+                this.cesiumViewer.camera.setView({
+                    destination: Cesium.Cartesian3.fromDegrees(-95.0, 39.0, 2000000)
+                });
+                
+                console.log('Cesium initialized with fallback configuration');
+                
+                // Test if viewer is actually working
+                setTimeout(() => {
+                    if (this.cesiumViewer && this.cesiumViewer.scene) {
+                        console.log('Cesium scene verified - 3D mode ready');
+                    } else {
+                        console.error('Cesium scene not available');
+                    }
+                }, 1000);
+                
+            } catch (fallbackError) {
+                console.error('Cesium fallback also failed:', fallbackError);
+                console.log('3D Battle View unavailable - WebGL support required');
+                this.cesiumViewer = null;
+            }
         }
     }
     
@@ -354,6 +406,7 @@ class MapManager {
     }
     
     switchTo3D() {
+        console.log('Switching to 3D Battle View...');
         this.is3DMode = true;
         document.getElementById('leaflet-map').style.display = 'none';
         document.getElementById('cesium-map').style.display = 'block';
@@ -364,12 +417,27 @@ class MapManager {
             modeDisplay.textContent = '3D Battle Mode';
         }
         
-        // Resize Cesium viewer
+        // Check if Cesium viewer exists
+        if (!this.cesiumViewer) {
+            console.error('Cesium viewer not initialized - attempting to reinitialize...');
+            this.initCesiumMap();
+        }
+        
+        // Resize and update Cesium viewer
         if (this.cesiumViewer) {
+            console.log('Resizing Cesium viewer and updating tracks...');
             setTimeout(() => {
-                this.cesiumViewer.resize();
-                this.updateCesiumTracks(this.tracks);
-            }, 100);
+                try {
+                    this.cesiumViewer.resize();
+                    this.cesiumViewer.scene.requestRender();
+                    this.updateCesiumTracks(this.tracks);
+                    console.log('3D Battle View activated successfully');
+                } catch (error) {
+                    console.error('Error activating 3D view:', error);
+                }
+            }, 200);
+        } else {
+            console.error('Failed to initialize 3D Battle View - WebGL may not be supported');
         }
     }
     

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Surveillance COP Dashboard{% endblock %}</title>
     
     <!-- Bootstrap CSS -->
@@ -112,15 +112,6 @@
     
     <!-- Cesium JS -->
     <script src="https://cesium.com/downloads/cesiumjs/releases/1.104/Build/Cesium/Cesium.js"></script>
-    
-    <!-- iTwin Platform (optional - comment out if not using) -->
-    <!-- 
-    <script>
-        // Uncomment and configure when you have iTwin credentials
-        // window.CESIUM_BASE_URL = 'https://cesium.com/downloads/cesiumjs/releases/1.104/Build/Cesium/';
-        // Cesium.ITwinPlatform.defaultShareKey = "your-actual-share-key-here";
-    </script>
-    -->
     
     <!-- Custom JavaScript -->
     <script src="{{ url_for('static', filename='js/websocket.js') }}"></script>

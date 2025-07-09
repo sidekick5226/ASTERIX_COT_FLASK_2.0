@@ -12,11 +12,9 @@ class MapManager {
         this.init();
     }
     
-    async init() {
-        console.log('Initializing MapManager...');
-        // Initialize both map views
+    init() {
         this.initLeafletMap();
-        await this.initCesiumMap();
+        this.initCesiumMap();
     }
     
     initLeafletMap() {
@@ -46,8 +44,8 @@ class MapManager {
         this.addMapInfoControl();
     }
     
-    async initCesiumMap() {
-        // Initialize Cesium map (3D) with default configuration
+    initCesiumMap() {
+        // Initialize Cesium map (3D) with reliable configuration
         try {
             this.cesiumViewer = new Cesium.Viewer('cesium-map', {
                 baseLayerPicker: false,
@@ -61,225 +59,81 @@ class MapManager {
                 vrButton: false,
                 infoBox: true,
                 selectionIndicator: true,
-                shouldAnimate: true
+                shouldAnimate: true,
+                // Use OpenStreetMap as reliable base layer
+                imageryProvider: new Cesium.OpenStreetMapImageryProvider({
+                    url: 'https://tile.openstreetmap.org/',
+                    credit: '© OpenStreetMap contributors'
+                })
             });
             
-            // Set initial camera position over North America
+            // Set initial camera position over North America for surveillance
             this.cesiumViewer.camera.setView({
-                destination: Cesium.Cartesian3.fromDegrees(-95.0, 39.0, 2000000),
+                destination: Cesium.Cartesian3.fromDegrees(-95.0, 39.0, 2000000), // Center of North America
                 orientation: {
                     heading: 0.0,
-                    pitch: -Cesium.Math.PI_OVER_SIX,
+                    pitch: -Cesium.Math.PI_OVER_SIX, // Less steep angle for better view
                     roll: 0.0
                 }
             });
             
-            // Ensure the globe and atmosphere are visible
-            this.cesiumViewer.scene.globe.show = true;
+            // Enable lighting for better visual effect
+            this.cesiumViewer.scene.globe.enableLighting = true;
+            this.cesiumViewer.scene.globe.dynamicAtmosphereLighting = true;
+            
+            // Set globe properties for military/surveillance style
+            this.cesiumViewer.scene.globe.baseColor = Cesium.Color.NAVY.withAlpha(0.1);
+            this.cesiumViewer.scene.globe.showWaterEffect = true;
+            
+            // Configure scene for surveillance
             this.cesiumViewer.scene.skyBox.show = true;
+            this.cesiumViewer.scene.sun.show = true;
+            this.cesiumViewer.scene.moon.show = true;
             this.cesiumViewer.scene.skyAtmosphere.show = true;
             
-            // Try to initialize iTwin Platform integration
-            await this.initializeiTwinIntegration();
-            
-            // Enhanced lighting and rendering
-            this.cesiumViewer.scene.globe.enableLighting = true;
-            this.cesiumViewer.scene.globe.showWaterEffect = true;
-            this.cesiumViewer.scene.globe.depthTestAgainstTerrain = true;
-            
-            // Enable high-quality features for better visualization
-            this.cesiumViewer.shadows = true;
-            this.cesiumViewer.terrainShadows = Cesium.ShadowMode.ENABLED;
-            this.cesiumViewer.scene.fog.enabled = true;
-            this.cesiumViewer.scene.fog.density = 0.0002;
-            
-            // Allow close zoom down to 1 meter for stock resolution
-            this.cesiumViewer.scene.screenSpaceCameraController.minimumZoomDistance = 1.0;
-            this.cesiumViewer.scene.screenSpaceCameraController.maximumZoomDistance = 40075017;
-            
-            // Wait for the globe to load before creating buildings
-            setTimeout(() => {
-                this.createSimpleBuildings();
-            }, 1000);
-            
-            console.log('Cesium 3D Map initialized successfully');
-            
-            // Force a render to ensure the globe appears
-            this.cesiumViewer.scene.requestRender();
-            
         } catch (error) {
-            console.error('Error initializing Cesium map:', error);
-            this.cesiumViewer = null;
-        }
-    }
-    
-    async initializeiTwinIntegration() {
-        try {
-            // Configure iTwin Platform if available
-            if (typeof Cesium.ITwinPlatform !== 'undefined') {
-                // This would be configured with your actual iTwin credentials
-                // For demo purposes, we'll use a placeholder
-                console.log('iTwin Platform detected, attempting integration...');
+            console.error('Error initializing Cesium:', error);
+            console.log('Trying fallback Cesium configuration...');
+            
+            // Fallback: Use most basic configuration
+            try {
+                this.cesiumViewer = new Cesium.Viewer('cesium-map', {
+                    baseLayerPicker: false,
+                    geocoder: false,
+                    homeButton: false,
+                    sceneModePicker: false,
+                    navigationHelpButton: false,
+                    animation: false,
+                    timeline: false,
+                    fullscreenButton: false,
+                    vrButton: false,
+                    infoBox: false,
+                    selectionIndicator: false,
+                    shouldAnimate: false
+                });
                 
-                // You would set your actual share key here
-                // Cesium.ITwinPlatform.defaultShareKey = "your-actual-share-key";
+                // Set basic camera view
+                this.cesiumViewer.camera.setView({
+                    destination: Cesium.Cartesian3.fromDegrees(-95.0, 39.0, 2000000)
+                });
                 
-                // Define known iTwin datasets for major cities
-                this.iTwinDatasets = {
-                    // Philadelphia example (from your code)
-                    'philadelphia': {
-                        iTwinId: "535a24a3-9b29-4e23-bb5d-9cedb524c743",
-                        realityMeshId: "85897090-3bcc-470b-bec7-20bb639cc1b9",
-                        position: {
-                            longitude: -75.1652,
-                            latitude: 39.9526,
-                            height: 500
-                        }
-                    },
-                    // Add more cities as you get their iTwin IDs
-                    'newyork': {
-                        iTwinId: "example-itwin-id",
-                        realityMeshId: "example-mesh-id", 
-                        position: {
-                            longitude: -74.0060,
-                            latitude: 40.7128,
-                            height: 500
-                        }
+                console.log('Cesium initialized with fallback configuration');
+                
+                // Test if viewer is actually working
+                setTimeout(() => {
+                    if (this.cesiumViewer && this.cesiumViewer.scene) {
+                        console.log('Cesium scene verified - 3D mode ready');
+                    } else {
+                        console.error('Cesium scene not available');
                     }
-                };
+                }, 1000);
                 
-                console.log('iTwin integration configured with datasets for:', Object.keys(this.iTwinDatasets));
-            } else {
-                console.log('iTwin Platform not available, using standard terrain');
-                this.setupStandardTerrain();
+            } catch (fallbackError) {
+                console.error('Cesium fallback also failed:', fallbackError);
+                console.log('3D Battle View unavailable - WebGL support required');
+                this.cesiumViewer = null;
             }
-        } catch (error) {
-            console.error('Error initializing iTwin integration:', error);
-            this.setupStandardTerrain();
         }
-    }
-    
-    setupStandardTerrain() {
-        // Use Cesium World Terrain for high-resolution elevation data
-        try {
-            this.cesiumViewer.terrainProvider = Cesium.createWorldTerrain({
-                requestWaterMask: true,
-                requestVertexNormals: true
-            });
-            
-            // Enable depth testing against terrain for accurate 3D rendering
-            this.cesiumViewer.scene.globe.depthTestAgainstTerrain = true;
-            
-            // Enable high-quality shadows
-            this.cesiumViewer.shadows = true;
-            this.cesiumViewer.terrainShadows = Cesium.ShadowMode.ENABLED;
-            
-            console.log('High-resolution World Terrain loaded');
-        } catch (error) {
-            console.log('World Terrain not available, using default imagery');
-            // Fallback to basic imagery if World Terrain fails
-            this.cesiumViewer.scene.imageryLayers.removeAll();
-            this.cesiumViewer.scene.imageryLayers.addImageryProvider(
-                new Cesium.TileMapServiceImageryProvider({
-                    url: Cesium.buildModuleUrl('Assets/Textures/NaturalEarthII')
-                })
-            );
-        }
-    }
-    
-    async loadiTwinDataForLocation(latitude, longitude) {
-        if (!this.iTwinDatasets || typeof Cesium.ITwinPlatform === 'undefined') {
-            return false;
-        }
-        
-        try {
-            // Find the closest iTwin dataset to the given coordinates
-            let closestDataset = null;
-            let minDistance = Infinity;
-            
-            for (const [city, dataset] of Object.entries(this.iTwinDatasets)) {
-                const distance = this.calculateDistance(
-                    latitude, longitude,
-                    dataset.position.latitude, dataset.position.longitude
-                );
-                
-                if (distance < minDistance && distance < 50) { // Within 50km
-                    minDistance = distance;
-                    closestDataset = dataset;
-                }
-            }
-            
-            if (closestDataset) {
-                console.log('Loading iTwin reality mesh for location...');
-                
-                const tileset = await Cesium.ITwinData.createTilesetForRealityDataId(
-                    closestDataset.iTwinId,
-                    closestDataset.realityMeshId
-                );
-                
-                if (tileset) {
-                    this.cesiumViewer.scene.primitives.add(tileset);
-                    tileset.maximumScreenSpaceError = 2;
-                    
-                    // Add labels if available
-                    try {
-                        const labelImageryLayer = Cesium.ImageryLayer.fromProviderAsync(
-                            Cesium.IonImageryProvider.fromAssetId(2411391)
-                        );
-                        tileset.imageryLayers.add(labelImageryLayer);
-                    } catch (labelError) {
-                        console.log('Labels not available for this iTwin dataset');
-                    }
-                    
-                    console.log('iTwin reality mesh loaded successfully');
-                    return true;
-                }
-            }
-            
-            return false;
-        } catch (error) {
-            console.error('Error loading iTwin data:', error);
-            return false;
-        }
-    }
-    
-    calculateDistance(lat1, lon1, lat2, lon2) {
-        // Calculate distance between two points using Haversine formula
-        const R = 6371; // Earth's radius in kilometers
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                  Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return R * c;
-    }
-    
-    createSimpleBuildings() {
-        // Create a few simple buildings for demonstration
-        const buildings = [
-            { lat: 40.7128, lon: -74.0060, height: 100 }, // New York
-            { lat: 34.0522, lon: -118.2437, height: 80 }, // Los Angeles
-            { lat: 41.8781, lon: -87.6298, height: 120 }, // Chicago
-        ];
-        
-        buildings.forEach((building, index) => {
-            this.cesiumViewer.entities.add({
-                position: Cesium.Cartesian3.fromDegrees(
-                    building.lon,
-                    building.lat,
-                    building.height / 2
-                ),
-                box: {
-                    dimensions: new Cesium.Cartesian3(50, 50, building.height),
-                    material: Cesium.Color.GRAY.withAlpha(0.8),
-                    outline: true,
-                    outlineColor: Cesium.Color.BLACK
-                }
-            });
-        });
-        
-        console.log('Simple 3D buildings created');
     }
     
     addMapInfoControl() {
@@ -604,24 +458,17 @@ class MapManager {
         this.updateTracks(filteredTracks);
     }
     
-    async focusOnTrack(trackId) {
+    focusOnTrack(trackId) {
         const track = this.tracks.find(t => t.track_id === trackId);
         if (!track) return;
         
         if (this.is3DMode && this.cesiumViewer) {
-            // Try to load iTwin data for this location first
-            const iTwinLoaded = await this.loadiTwinDataForLocation(track.latitude, track.longitude);
-            
-            if (iTwinLoaded) {
-                console.log('Using high-resolution iTwin data for track location');
-            }
-            
             // Focus on track in 3D
             this.cesiumViewer.camera.flyTo({
                 destination: Cesium.Cartesian3.fromDegrees(
                     track.longitude, 
                     track.latitude, 
-                    iTwinLoaded ? 500 : 10000  // Closer zoom if we have detailed data
+                    10000
                 ),
                 duration: 2.0
             });

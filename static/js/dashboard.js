@@ -507,9 +507,3 @@ class SurveillanceDashboard {
 document.addEventListener('DOMContentLoaded', () => {
     window.dashboard = new SurveillanceDashboard();
 });
-
-// Mobile sidebar toggle function
-function toggleSidebar() {
-    const sidebar = document.querySelector('.sidebar');
-    sidebar.classList.toggle('open');
-}

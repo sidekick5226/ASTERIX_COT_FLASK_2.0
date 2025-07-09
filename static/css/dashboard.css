@@ -8,15 +8,6 @@ body {
     overflow-x: hidden;
 }
 
-/* Responsive viewport setup */
-html {
-    box-sizing: border-box;
-}
-
-*, *::before, *::after {
-    box-sizing: inherit;
-}
-
 /* Sidebar styles */
 .sidebar {
     width: 280px;
@@ -26,22 +17,6 @@ html {
     position: fixed;
     overflow-y: auto;
     z-index: 1000;
-    transition: transform 0.3s ease;
-}
-
-/* Mobile sidebar toggle */
-.sidebar-toggle {
-    display: none;
-    position: fixed;
-    top: 15px;
-    left: 15px;
-    z-index: 1001;
-    background: #8b5cf6;
-    border: none;
-    color: white;
-    padding: 10px;
-    border-radius: 6px;
-    font-size: 1.2rem;
 }
 
 .sidebar-header {
@@ -144,7 +119,6 @@ html {
     min-height: 100vh;
     background-color: #0f172a;
     position: relative;
-    transition: margin-left 0.3s ease;
 }
 
 /* Dashboard header */
@@ -202,42 +176,8 @@ html {
 /* Map container */
 .map-container {
     position: relative;
-    height: calc(100vh - 320px);
-    min-height: 400px;
-    margin: 15px;
-    border: 2px solid #3b4168;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-}
-
-/* Responsive map sizing */
-@media (max-width: 768px) {
-    .map-container {
-        height: calc(100vh - 200px);
-        margin: 10px;
-        min-height: 300px;
-    }
-    
-    .active-tracks-panel {
-        height: 150px;
-        max-height: 150px;
-    }
-    
-    .sidebar {
-        width: 100%;
-        height: auto;
-        position: relative;
-    }
-    
-    .sidebar.open {
-        display: block;
-    }
-    
-    .main-content {
-        margin-left: 0;
-        width: 100%;
-    }
+    height: calc(100vh - 400px);
+    min-height: 500px;
 }
 
 .map-view {
@@ -296,106 +236,12 @@ html {
     text-align: center;
 }
 
-/* Responsive Design */
-@media (max-width: 1024px) {
-    .sidebar {
-        transform: translateX(-100%);
-    }
-    
-    .sidebar.open {
-        transform: translateX(0);
-    }
-    
-    .sidebar-toggle {
-        display: block;
-    }
-    
-    .main-content {
-        margin-left: 0;
-    }
-    
-    .dashboard-header {
-        padding: 15px 20px;
-        margin-left: 60px;
-    }
-    
-    .dashboard-header h2 {
-        font-size: 1.2rem;
-    }
-    
-    .dashboard-controls {
-        flex-wrap: wrap;
-        gap: 5px;
-    }
-    
-    .dashboard-controls .btn {
-        font-size: 0.8rem;
-        padding: 6px 12px;
-    }
-}
-
-@media (max-width: 768px) {
-    .dashboard-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 15px;
-        margin-left: 50px;
-        padding: 10px 15px;
-    }
-    
-    .dashboard-controls {
-        width: 100%;
-        justify-content: flex-start;
-    }
-    
-    .track-legend {
-        top: 10px;
-        right: 10px;
-        padding: 10px;
-        min-width: 120px;
-    }
-    
-    .active-tracks-panel {
-        padding: 15px;
-        height: 250px;
-    }
-    
-    .tracks-table-container {
-        max-height: 190px;
-    }
-}
-
-@media (max-width: 480px) {
-    .dashboard-header h2 {
-        font-size: 1rem;
-    }
-    
-    .dashboard-controls .btn {
-        font-size: 0.7rem;
-        padding: 5px 10px;
-    }
-    
-    .track-legend {
-        position: relative;
-        top: 0;
-        right: 0;
-        margin: 10px;
-        width: calc(100% - 20px);
-    }
-    
-    .legend-item {
-        font-size: 0.8rem;
-    }
-}
-
 /* Active tracks panel */
 .active-tracks-panel {
     background-color: #1e293b;
     border-top: 2px solid #3b4168;
     padding: 20px;
-    height: 250px;
-    min-height: 200px;
-    max-height: 250px;
+    height: 300px;
     overflow-y: auto;
 }
 

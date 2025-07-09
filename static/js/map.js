@@ -12,9 +12,11 @@ class MapManager {
         this.init();
     }
     
-    init() {
+    async init() {
+        console.log('Initializing MapManager...');
+        // Initialize both map views
         this.initLeafletMap();
-        this.initCesiumMap();
+        await this.initCesiumMap();
     }
     
     initLeafletMap() {
@@ -44,7 +46,7 @@ class MapManager {
         this.addMapInfoControl();
     }
     
-    initCesiumMap() {
+    async initCesiumMap() {
         // Initialize Cesium map (3D) with enhanced terrain and detailed visualization
         try {
             this.cesiumViewer = new Cesium.Viewer('cesium-map', {
@@ -66,8 +68,11 @@ class MapManager {
                     maximumLevel: 19, // Allow very high zoom levels
                     credit: 'Esri, DigitalGlobe, GeoEye, Earthstar Geographics, CNES/Airbus DS'
                 }),
-                // Enable detailed terrain for building/land features
-                terrainProvider: new Cesium.EllipsoidTerrainProvider()
+                // Enable Cesium World Terrain for realistic 3D terrain
+                terrainProvider: Cesium.createWorldTerrain({
+                    requestWaterMask: true,
+                    requestVertexNormals: true
+                })
             });
             
             // Set initial camera position over North America for surveillance
@@ -80,14 +85,22 @@ class MapManager {
                 }
             });
             
-            // Enable enhanced lighting and visual effects
+            // Enable enhanced lighting and visual effects for depth
             this.cesiumViewer.scene.globe.enableLighting = true;
             this.cesiumViewer.scene.globe.dynamicAtmosphereLighting = true;
             this.cesiumViewer.scene.globe.showWaterEffect = true;
             
+            // Enable shadows for terrain and buildings
+            this.cesiumViewer.shadows = true;
+            this.cesiumViewer.shadowMap.enabled = true;
+            this.cesiumViewer.shadowMap.size = 2048; // High-quality shadows
+            this.cesiumViewer.shadowMap.softShadows = true;
+            
             // Enable high-detail rendering for close-up viewing
-            this.cesiumViewer.scene.globe.maximumScreenSpaceError = 1.0; // Higher detail
-            this.cesiumViewer.scene.globe.tileCacheSize = 1000; // More tiles cached
+            this.cesiumViewer.scene.globe.maximumScreenSpaceError = 0.5; // Even higher detail
+            this.cesiumViewer.scene.globe.tileCacheSize = 2000; // More tiles cached
+            this.cesiumViewer.scene.globe.preloadSiblings = true;
+            this.cesiumViewer.scene.globe.preloadAncestors = true;
             
             // Configure camera for detailed terrain viewing
             this.cesiumViewer.scene.screenSpaceCameraController.minimumZoomDistance = 1.0; // Allow very close zoom
@@ -95,28 +108,108 @@ class MapManager {
             
             // Enable fog for depth perception at ground level
             this.cesiumViewer.scene.fog.enabled = true;
-            this.cesiumViewer.scene.fog.density = 0.0002;
+            this.cesiumViewer.scene.fog.density = 0.0001;
+            this.cesiumViewer.scene.fog.minimumBrightness = 0.03;
             
-            // Configure scene for detailed surveillance
+            // Configure scene for detailed surveillance with depth
             this.cesiumViewer.scene.skyBox.show = true;
             this.cesiumViewer.scene.sun.show = true;
             this.cesiumViewer.scene.moon.show = true;
             this.cesiumViewer.scene.skyAtmosphere.show = true;
             
-            // Add building/OSM 3D tileset for urban areas (optional enhancement)
-            try {
-                const osmBuildings = this.cesiumViewer.scene.primitives.add(
-                    new Cesium.Cesium3DTileset({
-                        url: Cesium.IonResource.fromAssetId(96188) // Cesium OSM Buildings
-                    })
-                );
-                osmBuildings.style = new Cesium.Cesium3DTileStyle({
-                    color: 'rgba(255, 255, 255, 0.8)',
-                    show: 'true'
+            // Enable depth testing for proper 3D rendering
+            this.cesiumViewer.scene.globe.depthTestAgainstTerrain = true;
+            
+            // Configure high-quality rendering
+            this.cesiumViewer.scene.postProcessStages.fxaa.enabled = true; // Anti-aliasing
+            this.cesiumViewer.scene.highDynamicRange = true;
+            
+            // Set realistic time for proper lighting and shadows
+            const currentTime = Cesium.JulianDate.now();
+            this.cesiumViewer.clock.currentTime = currentTime;
+            this.cesiumViewer.scene.globe.lightingFadeOutDistance = 6500000.0;
+            this.cesiumViewer.scene.globe.lightingFadeInDistance = 6500000.0;
+            
+            // Load 3D buildings with proper depth using async approach
+            this.load3DBuildings();
+            
+
+    }
+    
+    async load3DBuildings() {
+        try {
+            // Try to load OSM Buildings from Cesium Ion
+            const osmBuildings = await Cesium.Cesium3DTileset.fromIonAssetId(96188);
+            this.cesiumViewer.scene.primitives.add(osmBuildings);
+            
+            // Configure building style for better visibility and depth
+            osmBuildings.style = new Cesium.Cesium3DTileStyle({
+                color: {
+                    conditions: [
+                        ['${feature["building"]} === "office"', 'rgb(120, 120, 120)'],
+                        ['${feature["building"]} === "house"', 'rgb(180, 140, 100)'],
+                        ['${feature["building"]} === "apartments"', 'rgb(160, 160, 160)'],
+                        ['true', 'rgb(200, 200, 200)']
+                    ]
+                },
+                show: 'true'
+            });
+            
+            // Enable shadows for depth perception
+            osmBuildings.shadows = Cesium.ShadowMode.ENABLED;
+            console.log('3D buildings with depth loaded successfully');
+            
+        } catch (buildingError) {
+            console.log('OSM buildings not available, trying alternative approach:', buildingError);
+            
+            // Alternative approach: Create procedural buildings for demonstration
+            this.createProceduralBuildings();
+        }
+    }
+    
+    createProceduralBuildings() {
+        // Create some sample 3D buildings around major cities for demonstration
+        const cities = [
+            { name: 'New York', lat: 40.7128, lon: -74.0060 },
+            { name: 'London', lat: 51.5074, lon: -0.1278 },
+            { name: 'Tokyo', lat: 35.6762, lon: 139.6503 },
+            { name: 'Paris', lat: 48.8566, lon: 2.3522 }
+        ];
+        
+        cities.forEach(city => {
+            // Create a cluster of buildings around each city
+            for (let i = 0; i < 50; i++) {
+                const latOffset = (Math.random() - 0.5) * 0.02; // Random offset within ~1km
+                const lonOffset = (Math.random() - 0.5) * 0.02;
+                const height = Math.random() * 200 + 20; // Random height 20-220 meters
+                
+                const building = this.cesiumViewer.entities.add({
+                    position: Cesium.Cartesian3.fromDegrees(
+                        city.lon + lonOffset,
+                        city.lat + latOffset,
+                        height / 2 // Position at half height
+                    ),
+                    box: {
+                        dimensions: new Cesium.Cartesian3(
+                            Math.random() * 40 + 20, // width 20-60m
+                            Math.random() * 40 + 20, // depth 20-60m
+                            height // height
+                        ),
+                        material: Cesium.Color.fromRandom({
+                            red: 0.5,
+                            green: 0.5,
+                            blue: 0.5,
+                            alpha: 0.8
+                        }),
+                        outline: true,
+                        outlineColor: Cesium.Color.BLACK
+                    }
                 });
-            } catch (buildingError) {
-                console.log('3D buildings not available:', buildingError);
             }
+        });
+        
+        console.log('Procedural 3D buildings with depth created');
+    }
             
         } catch (error) {
             console.error('Error initializing Cesium:', error);

@@ -79,20 +79,46 @@ class MapManager {
             this.cesiumViewer.scene.skyBox.show = true;
             this.cesiumViewer.scene.skyAtmosphere.show = true;
             
-            // Add simple texture to make the globe visible
+            // Add high-resolution satellite imagery
             this.cesiumViewer.scene.imageryLayers.removeAll();
+            
+            // Use Bing Maps for high-resolution satellite imagery
             this.cesiumViewer.scene.imageryLayers.addImageryProvider(
-                new Cesium.TileMapServiceImageryProvider({
-                    url: Cesium.buildModuleUrl('Assets/Textures/NaturalEarthII')
+                new Cesium.BingMapsImageryProvider({
+                    url: 'https://dev.virtualearth.net',
+                    mapStyle: Cesium.BingMapsStyle.AERIAL_WITH_LABELS,
+                    credit: 'Bing Maps'
                 })
             );
             
-            // Basic lighting 
+            // Add world terrain for realistic 3D surface
+            try {
+                this.cesiumViewer.terrainProvider = Cesium.createWorldTerrain({
+                    requestWaterMask: true,
+                    requestVertexNormals: true
+                });
+            } catch (terrainError) {
+                console.log('World terrain not available, using default');
+            }
+            
+            // Enhanced lighting and visual effects
             this.cesiumViewer.scene.globe.enableLighting = true;
             this.cesiumViewer.scene.globe.showWaterEffect = true;
+            this.cesiumViewer.scene.globe.dynamicAtmosphereLighting = true;
             
-            // Allow close zoom
-            this.cesiumViewer.scene.screenSpaceCameraController.minimumZoomDistance = 10.0;
+            // Enable depth testing for proper 3D layering
+            this.cesiumViewer.scene.globe.depthTestAgainstTerrain = true;
+            
+            // Allow very close zoom for detailed inspection (1 meter minimum)
+            this.cesiumViewer.scene.screenSpaceCameraController.minimumZoomDistance = 1.0;
+            
+            // Enable high-quality rendering
+            this.cesiumViewer.scene.postProcessStages.fxaa.enabled = true;
+            this.cesiumViewer.scene.highDynamicRange = true;
+            
+            // Configure for high detail rendering
+            this.cesiumViewer.scene.globe.maximumScreenSpaceError = 0.5;
+            this.cesiumViewer.scene.globe.tileCacheSize = 2000;
             
             // Wait for the globe to load before creating buildings
             setTimeout(() => {
@@ -110,31 +136,64 @@ class MapManager {
         }
     }
     
-    createSimpleBuildings() {
-        // Create a few simple buildings for demonstration
-        const buildings = [
-            { lat: 40.7128, lon: -74.0060, height: 100 }, // New York
-            { lat: 34.0522, lon: -118.2437, height: 80 }, // Los Angeles
-            { lat: 41.8781, lon: -87.6298, height: 120 }, // Chicago
-        ];
-        
-        buildings.forEach((building, index) => {
-            this.cesiumViewer.entities.add({
-                position: Cesium.Cartesian3.fromDegrees(
-                    building.lon,
-                    building.lat,
-                    building.height / 2
-                ),
-                box: {
-                    dimensions: new Cesium.Cartesian3(50, 50, building.height),
-                    material: Cesium.Color.GRAY.withAlpha(0.8),
-                    outline: true,
-                    outlineColor: Cesium.Color.BLACK
+    async createSimpleBuildings() {
+        // Try to load real 3D buildings from Cesium Ion
+        try {
+            const osmBuildings = await Cesium.Cesium3DTileset.fromIonAssetId(96188);
+            this.cesiumViewer.scene.primitives.add(osmBuildings);
+            
+            // Style buildings for better visibility
+            osmBuildings.style = new Cesium.Cesium3DTileStyle({
+                color: 'rgb(200, 200, 200)',
+                show: true
+            });
+            
+            console.log('Real 3D buildings loaded');
+        } catch (error) {
+            console.log('Real buildings not available, creating procedural ones');
+            
+            // Create detailed building clusters in major cities
+            const cities = [
+                { name: 'New York', lat: 40.7128, lon: -74.0060, count: 100 },
+                { name: 'Los Angeles', lat: 34.0522, lon: -118.2437, count: 80 },
+                { name: 'Chicago', lat: 41.8781, lon: -87.6298, count: 60 },
+                { name: 'Houston', lat: 29.7604, lon: -95.3698, count: 50 },
+                { name: 'Phoenix', lat: 33.4484, lon: -112.0740, count: 40 }
+            ];
+            
+            cities.forEach(city => {
+                for (let i = 0; i < city.count; i++) {
+                    const latOffset = (Math.random() - 0.5) * 0.03;
+                    const lonOffset = (Math.random() - 0.5) * 0.03;
+                    const height = Math.random() * 300 + 30;
+                    
+                    this.cesiumViewer.entities.add({
+                        position: Cesium.Cartesian3.fromDegrees(
+                            city.lon + lonOffset,
+                            city.lat + latOffset,
+                            height / 2
+                        ),
+                        box: {
+                            dimensions: new Cesium.Cartesian3(
+                                Math.random() * 60 + 20,
+                                Math.random() * 60 + 20,
+                                height
+                            ),
+                            material: Cesium.Color.fromRandom({
+                                red: 0.6,
+                                green: 0.6,
+                                blue: 0.6,
+                                alpha: 0.9
+                            }),
+                            outline: true,
+                            outlineColor: Cesium.Color.BLACK
+                        }
+                    });
                 }
             });
-        });
-        
-        console.log('Simple 3D buildings created');
+            
+            console.log('Procedural 3D buildings created');
+        }
     }
     
     addMapInfoControl() {
@@ -282,12 +341,74 @@ class MapManager {
     updateCesiumTracks(tracks) {
         if (!this.cesiumViewer) return;
         
-        // Clear existing entities
-        this.cesiumViewer.entities.removeAll();
+        // Clear track entities only (preserve buildings)
+        const entities = this.cesiumViewer.entities.values;
+        for (let i = entities.length - 1; i >= 0; i--) {
+            const entity = entities[i];
+            if (entity.id && entity.id.startsWith('TRK')) {
+                this.cesiumViewer.entities.remove(entity);
+            }
+        }
         
-        // Add new entities
+        // Add new track entities
         tracks.forEach(track => {
-            this.createCesiumEntity(track);
+            const trackId = track.track_id;
+            
+            // Determine altitude based on track type with realistic values
+            let altitude = 0;
+            if (track.type === 'Aircraft') {
+                altitude = track.altitude || 10000; // Default 10,000 feet for aircraft
+            } else if (track.type === 'Vessel') {
+                altitude = 0; // Sea level for vessels
+            } else if (track.type === 'Vehicle') {
+                altitude = 100; // 100 feet for ground vehicles
+            }
+            
+            // Create entity positioned on the terrain
+            const position = Cesium.Cartesian3.fromDegrees(
+                track.longitude,
+                track.latitude,
+                altitude
+            );
+            
+            const entity = {
+                id: trackId,
+                position: position,
+                point: {
+                    pixelSize: 12,
+                    color: this.getCesiumColor(track.type),
+                    outlineColor: Cesium.Color.WHITE,
+                    outlineWidth: 2,
+                    heightReference: altitude > 0 ? Cesium.HeightReference.NONE : Cesium.HeightReference.CLAMP_TO_GROUND,
+                    disableDepthTestDistance: Number.POSITIVE_INFINITY
+                },
+                label: {
+                    text: `${track.track_id}\n${track.callsign || 'Unknown'}`,
+                    font: '10pt monospace',
+                    style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+                    fillColor: Cesium.Color.WHITE,
+                    outlineColor: Cesium.Color.BLACK,
+                    outlineWidth: 2,
+                    verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                    pixelOffset: new Cesium.Cartesian2(0, -10),
+                    heightReference: altitude > 0 ? Cesium.HeightReference.NONE : Cesium.HeightReference.CLAMP_TO_GROUND,
+                    disableDepthTestDistance: Number.POSITIVE_INFINITY
+                },
+                description: `
+                    <div style="font-family: monospace; font-size: 12px;">
+                        <strong>Track ID:</strong> ${track.track_id}<br>
+                        <strong>Callsign:</strong> ${track.callsign || 'Unknown'}<br>
+                        <strong>Type:</strong> ${track.type}<br>
+                        <strong>Position:</strong> ${track.latitude.toFixed(4)}, ${track.longitude.toFixed(4)}<br>
+                        <strong>Altitude:</strong> ${altitude} ft<br>
+                        <strong>Heading:</strong> ${track.heading ? track.heading.toFixed(1) + '°' : 'Unknown'}<br>
+                        <strong>Speed:</strong> ${track.speed ? track.speed.toFixed(1) + ' knots' : 'Unknown'}<br>
+                        <strong>Status:</strong> ${track.status}
+                    </div>
+                `
+            };
+            
+            this.cesiumViewer.entities.add(entity);
         });
     }
     

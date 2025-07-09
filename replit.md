@@ -12,7 +12,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Backend Architecture
 - **Framework**: Flask web application with Socket.IO for real-time communication
-- **Database**: SQLAlchemy ORM with SQLite as default (configurable via DATABASE_URL environment variable)
+- **Database**: SQLAlchemy ORM with PostgreSQL database (configured via DATABASE_URL environment variable)
 - **Real-time Communication**: WebSocket connections using Flask-SocketIO for live track updates
 - **Data Processing**: Modular processors for ASTERIX surveillance data, CoT XML conversion, and KLV metadata handling
 
@@ -74,9 +74,10 @@ Preferred communication style: Simple, everyday language.
 ## Deployment Strategy
 
 ### Environment Configuration
-- **Database**: Configurable via DATABASE_URL environment variable (defaults to SQLite)
+- **Database**: PostgreSQL database configured via DATABASE_URL environment variable
 - **Security**: Session secret configurable via SESSION_SECRET environment variable
 - **Connection Pooling**: SQLAlchemy configured with connection recycling and health checks
+- **Database Credentials**: PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE environment variables
 
 ### Production Considerations
 - ProxyFix middleware configured for deployment behind reverse proxies
@@ -87,7 +88,13 @@ Preferred communication style: Simple, everyday language.
 ### Scalability Features
 - Stateless design allows horizontal scaling
 - Socket.IO supports multiple workers with proper configuration
-- Database abstraction allows easy migration from SQLite to PostgreSQL/MySQL
+- PostgreSQL database supports concurrent connections and high-performance operations
 - Modular data processors can be deployed as separate services
+
+## Recent Updates (July 2025)
+- **Database Migration**: Upgraded from SQLite to PostgreSQL for better performance and concurrent access
+- **Live Updates**: Implemented continuous track updates every second for real-time surveillance
+- **Battle View 3D**: Fixed altitude positioning with realistic defaults (Aircraft: 10,000ft, Vessels: sea level, Vehicles: 100ft)
+- **Selective Clearing**: "Stop & Clear" now preserves Event Log while clearing Active Tracks and Event Monitor
 
 The application is designed as a real-time surveillance monitoring system with military/emergency response integration capabilities, supporting multiple data formats and providing both 2D and 3D visualization options.

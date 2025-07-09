@@ -45,7 +45,7 @@ class MapManager {
     }
     
     initCesiumMap() {
-        // Initialize Cesium map (3D) with reliable configuration
+        // Initialize Cesium map (3D) with enhanced terrain and detailed visualization
         try {
             this.cesiumViewer = new Cesium.Viewer('cesium-map', {
                 baseLayerPicker: false,
@@ -60,11 +60,14 @@ class MapManager {
                 infoBox: true,
                 selectionIndicator: true,
                 shouldAnimate: true,
-                // Use OpenStreetMap as reliable base layer
-                imageryProvider: new Cesium.OpenStreetMapImageryProvider({
-                    url: 'https://tile.openstreetmap.org/',
-                    credit: '© OpenStreetMap contributors'
-                })
+                // Use high-resolution satellite imagery for detailed view
+                imageryProvider: new Cesium.UrlTemplateImageryProvider({
+                    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                    maximumLevel: 19, // Allow very high zoom levels
+                    credit: 'Esri, DigitalGlobe, GeoEye, Earthstar Geographics, CNES/Airbus DS'
+                }),
+                // Enable detailed terrain for building/land features
+                terrainProvider: new Cesium.EllipsoidTerrainProvider()
             });
             
             // Set initial camera position over North America for surveillance
@@ -77,19 +80,43 @@ class MapManager {
                 }
             });
             
-            // Enable lighting for better visual effect
+            // Enable enhanced lighting and visual effects
             this.cesiumViewer.scene.globe.enableLighting = true;
             this.cesiumViewer.scene.globe.dynamicAtmosphereLighting = true;
-            
-            // Set globe properties for military/surveillance style
-            this.cesiumViewer.scene.globe.baseColor = Cesium.Color.NAVY.withAlpha(0.1);
             this.cesiumViewer.scene.globe.showWaterEffect = true;
             
-            // Configure scene for surveillance
+            // Enable high-detail rendering for close-up viewing
+            this.cesiumViewer.scene.globe.maximumScreenSpaceError = 1.0; // Higher detail
+            this.cesiumViewer.scene.globe.tileCacheSize = 1000; // More tiles cached
+            
+            // Configure camera for detailed terrain viewing
+            this.cesiumViewer.scene.screenSpaceCameraController.minimumZoomDistance = 1.0; // Allow very close zoom
+            this.cesiumViewer.scene.screenSpaceCameraController.maximumZoomDistance = 50000000.0;
+            
+            // Enable fog for depth perception at ground level
+            this.cesiumViewer.scene.fog.enabled = true;
+            this.cesiumViewer.scene.fog.density = 0.0002;
+            
+            // Configure scene for detailed surveillance
             this.cesiumViewer.scene.skyBox.show = true;
             this.cesiumViewer.scene.sun.show = true;
             this.cesiumViewer.scene.moon.show = true;
             this.cesiumViewer.scene.skyAtmosphere.show = true;
+            
+            // Add building/OSM 3D tileset for urban areas (optional enhancement)
+            try {
+                const osmBuildings = this.cesiumViewer.scene.primitives.add(
+                    new Cesium.Cesium3DTileset({
+                        url: Cesium.IonResource.fromAssetId(96188) // Cesium OSM Buildings
+                    })
+                );
+                osmBuildings.style = new Cesium.Cesium3DTileStyle({
+                    color: 'rgba(255, 255, 255, 0.8)',
+                    show: 'true'
+                });
+            } catch (buildingError) {
+                console.log('3D buildings not available:', buildingError);
+            }
             
         } catch (error) {
             console.error('Error initializing Cesium:', error);

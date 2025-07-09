@@ -6,6 +6,7 @@ class SurveillanceDashboard {
         this.currentPage = 1;
         this.isLiveDemo = false;
         this.isBattleMode = false;
+        this.updateInterval = null;
         
         this.init();
     }
@@ -14,6 +15,7 @@ class SurveillanceDashboard {
         this.bindEvents();
         this.loadInitialData();
         this.setupTabHandlers();
+        this.startPeriodicUpdates(); // Always check for updates every second
     }
     
     bindEvents() {
@@ -105,6 +107,24 @@ class SurveillanceDashboard {
         }
     }
     
+    startPeriodicUpdates() {
+        // Check for track updates every second
+        if (this.updateInterval) {
+            clearInterval(this.updateInterval);
+        }
+        
+        this.updateInterval = setInterval(async () => {
+            await this.loadTracks(); // Always check for updates
+        }, 1000);
+    }
+    
+    stopPeriodicUpdates() {
+        if (this.updateInterval) {
+            clearInterval(this.updateInterval);
+            this.updateInterval = null;
+        }
+    }
+    
     async loadNetworkConfig() {
         try {
             const response = await fetch('/api/network-config');
@@ -160,7 +180,7 @@ class SurveillanceDashboard {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${track.track_id}</td>
-            <td><span class="status-badge status-${track.type.toLowerCase()}">${track.type}</span></td>
+            <td><span class="status-badge status-${(track.track_type || track.type || 'unknown').toLowerCase()}">${track.track_type || track.type || 'Unknown'}</span></td>
             <td><span class="status-badge status-${track.status.toLowerCase()}">${track.status}</span></td>
             <td>
                 <button class="btn btn-sm btn-outline-primary action-btn" onclick="dashboard.viewTrackDetails('${track.track_id}')">
@@ -183,7 +203,7 @@ class SurveillanceDashboard {
         };
         
         this.tracks.forEach(track => {
-            const type = track.type.toLowerCase();
+            const type = (track.track_type || track.type || 'unknown').toLowerCase();
             if (counts.hasOwnProperty(type)) {
                 counts[type]++;
             } else {

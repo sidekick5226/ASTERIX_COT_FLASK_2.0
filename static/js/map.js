@@ -269,10 +269,25 @@ class MapManager {
     
     createCesiumEntity(track) {
         const color = this.getCesiumColor(track.type);
+        // Use reasonable altitude defaults for 3D view
+        let altitude = 0;
+        if (track.altitude && track.altitude > 0 && track.altitude < 100000) {
+            altitude = track.altitude;
+        } else {
+            // Set default altitudes based on track type for better 3D visualization
+            if ((track.track_type || track.type) === 'Aircraft') {
+                altitude = 10000; // 10,000 feet for aircraft
+            } else if ((track.track_type || track.type) === 'Vessel') {
+                altitude = 0; // Sea level for vessels
+            } else if ((track.track_type || track.type) === 'Vehicle') {
+                altitude = 100; // 100 feet for ground vehicles
+            }
+        }
+        
         const position = Cesium.Cartesian3.fromDegrees(
             track.longitude, 
             track.latitude, 
-            track.altitude || 0
+            altitude
         );
         
         this.cesiumViewer.entities.add({
@@ -297,12 +312,12 @@ class MapManager {
             description: `
                 <div>
                     <h4>${track.track_id}</h4>
-                    <p><strong>Type:</strong> ${track.type}</p>
+                    <p><strong>Type:</strong> ${track.track_type || track.type}</p>
                     <p><strong>Status:</strong> ${track.status}</p>
                     <p><strong>Position:</strong> ${track.latitude.toFixed(4)}, ${track.longitude.toFixed(4)}</p>
-                    ${track.altitude ? `<p><strong>Altitude:</strong> ${track.altitude} ft</p>` : ''}
-                    ${track.speed ? `<p><strong>Speed:</strong> ${track.speed} kts</p>` : ''}
-                    ${track.heading ? `<p><strong>Heading:</strong> ${track.heading}°</p>` : ''}
+                    <p><strong>Altitude:</strong> ${altitude} ft</p>
+                    ${track.speed ? `<p><strong>Speed:</strong> ${Math.round(track.speed)} kts</p>` : ''}
+                    ${track.heading ? `<p><strong>Heading:</strong> ${Math.round(track.heading)}°</p>` : ''}
                     <p><strong>Last Update:</strong> ${new Date(track.last_updated).toLocaleString()}</p>
                 </div>
             `
@@ -319,7 +334,8 @@ class MapManager {
     }
     
     getTrackColor(type) {
-        switch (type.toLowerCase()) {
+        const trackType = (type || '').toLowerCase();
+        switch (trackType) {
             case 'aircraft': return '#3b82f6';
             case 'vessel': return '#10b981';
             case 'vehicle': return '#f59e0b';
@@ -328,7 +344,8 @@ class MapManager {
     }
     
     getCesiumColor(type) {
-        switch (type.toLowerCase()) {
+        const trackType = (type || '').toLowerCase();
+        switch (trackType) {
             case 'aircraft': return Cesium.Color.BLUE;
             case 'vessel': return Cesium.Color.GREEN;
             case 'vehicle': return Cesium.Color.ORANGE;

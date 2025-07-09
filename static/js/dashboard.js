@@ -82,7 +82,7 @@ class SurveillanceDashboard {
             await this.loadNetworkConfig();
         } catch (error) {
             console.error('Error loading initial data:', error);
-            this.showNotification('Error loading initial data', 'error');
+            // Don't show popup notification to prevent spam
         }
     }
     
@@ -103,6 +103,7 @@ class SurveillanceDashboard {
                 window.mapManager.updateTracks(tracks);
             }
         } catch (error) {
+            // Only log error, don't show notification to prevent popup spam
             console.error('Error loading tracks:', error);
         }
     }

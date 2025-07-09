@@ -6,6 +6,7 @@ class WebSocketManager {
         this.maxReconnectAttempts = 5;
         this.reconnectDelay = 1000;
         this.isConnected = false;
+        this.lastErrorTime = 0; // For throttling error messages
         
         this.init();
     }
@@ -34,7 +35,11 @@ class WebSocketManager {
             });
             
             this.socket.on('connect_error', (error) => {
-                console.error('Connection error:', error);
+                // Throttle error messages to prevent spam
+                if (!this.lastErrorTime || Date.now() - this.lastErrorTime > 10000) {
+                    console.error('Connection error:', error);
+                    this.lastErrorTime = Date.now();
+                }
                 this.updateConnectionStatus(false);
                 this.attemptReconnect();
             });
@@ -67,16 +72,22 @@ class WebSocketManager {
     
     attemptReconnect() {
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            console.error('Max reconnection attempts reached');
+            // Only log once when max attempts reached, don't spam console
+            if (this.reconnectAttempts === this.maxReconnectAttempts) {
+                console.error('Max reconnection attempts reached');
+            }
             return;
         }
         
         this.reconnectAttempts++;
-        console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+        // Reduce console spam
+        if (this.reconnectAttempts <= 2) {
+            console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+        }
         
         setTimeout(() => {
             this.connect();
-        }, this.reconnectDelay * this.reconnectAttempts);
+        }, this.reconnectDelay * Math.min(this.reconnectAttempts, 3)); // Cap delay
     }
     
     requestTrackUpdate() {
@@ -150,21 +161,8 @@ class WebSocketManager {
             document.body.appendChild(indicator);
         }
         
-        if (connected) {
-            indicator.style.backgroundColor = '#059669';
-            indicator.style.color = '#ffffff';
-            indicator.innerHTML = '<i class="fas fa-wifi"></i> Connected';
-            
-            // Hide after 3 seconds
-            setTimeout(() => {
-                indicator.style.opacity = '0';
-            }, 3000);
-        } else {
-            indicator.style.backgroundColor = '#dc2626';
-            indicator.style.color = '#ffffff';
-            indicator.style.opacity = '1';
-            indicator.innerHTML = '<i class="fas fa-wifi"></i> Disconnected - Reconnecting...';
-        }
+        // Hide connection status entirely to prevent red popup spam
+        indicator.style.display = 'none';
     }
     
     // Public methods for external use

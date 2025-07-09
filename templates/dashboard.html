@@ -23,11 +23,11 @@
                 </button>
             </div>
         </div>
-        
+
         <div class="map-container">
             <div id="leaflet-map" class="map-view"></div>
             <div id="cesium-map" class="map-view" style="display: none;"></div>
-            
+
             <!-- Track Legend -->
             <div class="track-legend">
                 <h6>Track Legend</h6>
@@ -53,7 +53,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Active Tracks Panel -->
         <div class="active-tracks-panel">
             <h6><i class="fas fa-list"></i> Active Tracks <span class="badge bg-primary" id="total-tracks">0</span></h6>
@@ -74,7 +74,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Event Monitor Tab -->
     <div class="tab-pane fade" id="event-monitor" role="tabpanel">
         <div class="dashboard-header">
@@ -85,7 +85,7 @@
                 </button>
             </div>
         </div>
-        
+
         <div class="events-table-container">
             <table class="table table-dark table-striped">
                 <thead>
@@ -102,7 +102,7 @@
             </table>
         </div>
     </div>
-    
+
     <!-- Event Log Tab -->
     <div class="tab-pane fade" id="event-log" role="tabpanel">
         <div class="dashboard-header">
@@ -113,7 +113,7 @@
                 </button>
             </div>
         </div>
-        
+
         <div class="log-filters">
             <div class="row">
                 <div class="col-md-3">
@@ -141,7 +141,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="events-log-container">
             <table class="table table-dark table-striped">
                 <thead>
@@ -158,20 +158,20 @@
                 </tbody>
             </table>
         </div>
-        
+
         <nav aria-label="Event log pagination">
             <ul class="pagination pagination-sm justify-content-center" id="log-pagination">
                 <!-- Pagination will be populated here -->
             </ul>
         </nav>
     </div>
-    
+
     <!-- Messenger Tab -->
     <div class="tab-pane fade" id="messenger" role="tabpanel">
         <div class="dashboard-header">
             <h2><i class="fas fa-comments"></i> Messenger</h2>
         </div>
-        
+
         <div class="messenger-placeholder">
             <div class="text-center">
                 <i class="fas fa-comments fa-5x text-muted mb-3"></i>
@@ -181,4 +181,70 @@
         </div>
     </div>
 </div>
+<div class="tab-pane fade" id="network" role="tabpanel">
+        <div class="dashboard-header">
+            <h2><i class="fas fa-network-wired"></i> Network Settings</h2>
+        </div>
+
+        <div class="network-settings-container">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-server me-2"></i>
+                                Server Configuration
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="ip_address" class="form-label">IP Address</label>
+                                <input type="text" class="form-control" id="ip_address" value="127.0.0.1">
+                            </div>
+
+                            <!-- iTwin Platform Configuration -->
+                            <div class="card mt-3">
+                                <div class="card-header">
+                                    <h6 class="card-title mb-0">
+                                        <i class="fas fa-globe-americas me-2"></i>
+                                        3D Reality Data (iTwin Platform)
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="enable-itwin">
+                                            <label class="form-check-label" for="enable-itwin">
+                                                Enable iTwin Reality Mesh Integration
+                                            </label>
+                                        </div>
+                                        <small class="form-text text-muted">
+                                            Provides high-resolution 3D photogrammetry data for supported locations
+                                        </small>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="itwin-share-key" class="form-label">iTwin Share Key</label>
+                                        <input type="password" class="form-control" id="itwin-share-key" 
+                                               placeholder="Enter your iTwin Platform share key">
+                                        <small class="form-text text-muted">
+                                            <a href="https://developer.bentley.com/apis/access-control-v2/" target="_blank">
+                                                Get your iTwin share key here
+                                            </a>
+                                        </small>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Supported Locations</label>
+                                        <div class="form-text">
+                                            <ul class="list-unstyled mb-0">
+                                                <li><i class="fas fa-map-marker-alt text-success me-1"></i> Philadelphia, PA (Demo)</li>
+                                                <li><i class="fas fa-map-marker-alt text-muted me-1"></i> New York, NY (Requires configuration)</li>
+                                                <li><i class="fas fa-plus text-muted me-1"></i> Add more locations via iTwin dataset IDs</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 {% endblock %}

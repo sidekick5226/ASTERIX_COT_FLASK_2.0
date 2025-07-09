@@ -79,13 +79,8 @@ class MapManager {
             this.cesiumViewer.scene.skyBox.show = true;
             this.cesiumViewer.scene.skyAtmosphere.show = true;
             
-            // Add simple texture to make the globe visible
-            this.cesiumViewer.scene.imageryLayers.removeAll();
-            this.cesiumViewer.scene.imageryLayers.addImageryProvider(
-                new Cesium.TileMapServiceImageryProvider({
-                    url: Cesium.buildModuleUrl('Assets/Textures/NaturalEarthII')
-                })
-            );
+            // Try to initialize iTwin Platform integration
+            await this.initializeiTwinIntegration();
             
             // Basic lighting 
             this.cesiumViewer.scene.globe.enableLighting = true;
@@ -108,6 +103,130 @@ class MapManager {
             console.error('Error initializing Cesium map:', error);
             this.cesiumViewer = null;
         }
+    }
+    
+    async initializeiTwinIntegration() {
+        try {
+            // Configure iTwin Platform if available
+            if (typeof Cesium.ITwinPlatform !== 'undefined') {
+                // This would be configured with your actual iTwin credentials
+                // For demo purposes, we'll use a placeholder
+                console.log('iTwin Platform detected, attempting integration...');
+                
+                // You would set your actual share key here
+                // Cesium.ITwinPlatform.defaultShareKey = "your-actual-share-key";
+                
+                // Define known iTwin datasets for major cities
+                this.iTwinDatasets = {
+                    // Philadelphia example (from your code)
+                    'philadelphia': {
+                        iTwinId: "535a24a3-9b29-4e23-bb5d-9cedb524c743",
+                        realityMeshId: "85897090-3bcc-470b-bec7-20bb639cc1b9",
+                        position: {
+                            longitude: -75.1652,
+                            latitude: 39.9526,
+                            height: 500
+                        }
+                    },
+                    // Add more cities as you get their iTwin IDs
+                    'newyork': {
+                        iTwinId: "example-itwin-id",
+                        realityMeshId: "example-mesh-id", 
+                        position: {
+                            longitude: -74.0060,
+                            latitude: 40.7128,
+                            height: 500
+                        }
+                    }
+                };
+                
+                console.log('iTwin integration configured with datasets for:', Object.keys(this.iTwinDatasets));
+            } else {
+                console.log('iTwin Platform not available, using standard terrain');
+                this.setupStandardTerrain();
+            }
+        } catch (error) {
+            console.error('Error initializing iTwin integration:', error);
+            this.setupStandardTerrain();
+        }
+    }
+    
+    setupStandardTerrain() {
+        // Fallback to standard imagery when iTwin is not available
+        this.cesiumViewer.scene.imageryLayers.removeAll();
+        this.cesiumViewer.scene.imageryLayers.addImageryProvider(
+            new Cesium.TileMapServiceImageryProvider({
+                url: Cesium.buildModuleUrl('Assets/Textures/NaturalEarthII')
+            })
+        );
+    }
+    
+    async loadiTwinDataForLocation(latitude, longitude) {
+        if (!this.iTwinDatasets || typeof Cesium.ITwinPlatform === 'undefined') {
+            return false;
+        }
+        
+        try {
+            // Find the closest iTwin dataset to the given coordinates
+            let closestDataset = null;
+            let minDistance = Infinity;
+            
+            for (const [city, dataset] of Object.entries(this.iTwinDatasets)) {
+                const distance = this.calculateDistance(
+                    latitude, longitude,
+                    dataset.position.latitude, dataset.position.longitude
+                );
+                
+                if (distance < minDistance && distance < 50) { // Within 50km
+                    minDistance = distance;
+                    closestDataset = dataset;
+                }
+            }
+            
+            if (closestDataset) {
+                console.log('Loading iTwin reality mesh for location...');
+                
+                const tileset = await Cesium.ITwinData.createTilesetForRealityDataId(
+                    closestDataset.iTwinId,
+                    closestDataset.realityMeshId
+                );
+                
+                if (tileset) {
+                    this.cesiumViewer.scene.primitives.add(tileset);
+                    tileset.maximumScreenSpaceError = 2;
+                    
+                    // Add labels if available
+                    try {
+                        const labelImageryLayer = Cesium.ImageryLayer.fromProviderAsync(
+                            Cesium.IonImageryProvider.fromAssetId(2411391)
+                        );
+                        tileset.imageryLayers.add(labelImageryLayer);
+                    } catch (labelError) {
+                        console.log('Labels not available for this iTwin dataset');
+                    }
+                    
+                    console.log('iTwin reality mesh loaded successfully');
+                    return true;
+                }
+            }
+            
+            return false;
+        } catch (error) {
+            console.error('Error loading iTwin data:', error);
+            return false;
+        }
+    }
+    
+    calculateDistance(lat1, lon1, lat2, lon2) {
+        // Calculate distance between two points using Haversine formula
+        const R = 6371; // Earth's radius in kilometers
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
     }
     
     createSimpleBuildings() {
@@ -459,17 +578,24 @@ class MapManager {
         this.updateTracks(filteredTracks);
     }
     
-    focusOnTrack(trackId) {
+    async focusOnTrack(trackId) {
         const track = this.tracks.find(t => t.track_id === trackId);
         if (!track) return;
         
         if (this.is3DMode && this.cesiumViewer) {
+            // Try to load iTwin data for this location first
+            const iTwinLoaded = await this.loadiTwinDataForLocation(track.latitude, track.longitude);
+            
+            if (iTwinLoaded) {
+                console.log('Using high-resolution iTwin data for track location');
+            }
+            
             // Focus on track in 3D
             this.cesiumViewer.camera.flyTo({
                 destination: Cesium.Cartesian3.fromDegrees(
                     track.longitude, 
                     track.latitude, 
-                    10000
+                    iTwinLoaded ? 500 : 10000  // Closer zoom if we have detailed data
                 ),
                 duration: 2.0
             });

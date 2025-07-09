@@ -1,0 +1,457 @@
+// Dashboard functionality
+class SurveillanceDashboard {
+    constructor() {
+        this.tracks = new Map();
+        this.events = [];
+        this.currentPage = 1;
+        this.isLiveDemo = false;
+        this.isBattleMode = false;
+        
+        this.init();
+    }
+    
+    init() {
+        this.bindEvents();
+        this.loadInitialData();
+        this.setupTabHandlers();
+    }
+    
+    bindEvents() {
+        // Control buttons
+        document.getElementById('start-demo-btn').addEventListener('click', () => this.startLiveDemo());
+        document.getElementById('stop-demo-btn').addEventListener('click', () => this.stopLiveDemo());
+        document.getElementById('battle-mode-btn').addEventListener('click', () => this.toggleBattleMode());
+        
+        // Filters
+        document.getElementById('track-type-filter').addEventListener('change', (e) => this.filterTracks(e.target.value));
+        document.getElementById('search-input').addEventListener('input', (e) => this.searchTracks(e.target.value));
+        
+        // Event handlers
+        document.getElementById('refresh-events-btn').addEventListener('click', () => this.refreshEvents());
+        document.getElementById('filter-log-btn').addEventListener('click', () => this.filterEventLog());
+        document.getElementById('export-log-btn').addEventListener('click', () => this.exportEventLog());
+        
+        // Network configuration
+        this.bindNetworkConfigEvents();
+    }
+    
+    bindNetworkConfigEvents() {
+        const protocol = document.getElementById('protocol');
+        const port = document.getElementById('port');
+        const ipAddress = document.getElementById('ip_address');
+        
+        [protocol, port, ipAddress].forEach(element => {
+            element.addEventListener('change', () => this.updateNetworkConfig());
+        });
+    }
+    
+    setupTabHandlers() {
+        const tabs = document.querySelectorAll('[data-bs-toggle="tab"]');
+        tabs.forEach(tab => {
+            tab.addEventListener('shown.bs.tab', (e) => {
+                const target = e.target.getAttribute('data-bs-target');
+                this.handleTabChange(target);
+            });
+        });
+    }
+    
+    handleTabChange(target) {
+        switch (target) {
+            case '#dashboard':
+                if (window.mapManager) {
+                    setTimeout(() => window.mapManager.invalidateSize(), 100);
+                }
+                break;
+            case '#event-monitor':
+                this.refreshEvents();
+                break;
+            case '#event-log':
+                this.loadEventLog();
+                break;
+            case '#messenger':
+                // Placeholder for future implementation
+                break;
+        }
+    }
+    
+    async loadInitialData() {
+        try {
+            await this.loadTracks();
+            await this.loadNetworkConfig();
+        } catch (error) {
+            console.error('Error loading initial data:', error);
+            this.showNotification('Error loading initial data', 'error');
+        }
+    }
+    
+    async loadTracks() {
+        try {
+            const response = await fetch('/api/tracks');
+            const tracks = await response.json();
+            
+            this.tracks.clear();
+            tracks.forEach(track => {
+                this.tracks.set(track.track_id, track);
+            });
+            
+            this.updateTracksDisplay();
+            this.updateTrackCounts();
+            
+            if (window.mapManager) {
+                window.mapManager.updateTracks(tracks);
+            }
+        } catch (error) {
+            console.error('Error loading tracks:', error);
+        }
+    }
+    
+    async loadNetworkConfig() {
+        try {
+            const response = await fetch('/api/network-config');
+            const config = await response.json();
+            
+            document.getElementById('protocol').value = config.protocol;
+            document.getElementById('port').value = config.port;
+            document.getElementById('ip_address').value = config.ip_address;
+        } catch (error) {
+            console.error('Error loading network config:', error);
+        }
+    }
+    
+    async updateNetworkConfig() {
+        try {
+            const config = {
+                protocol: document.getElementById('protocol').value,
+                port: parseInt(document.getElementById('port').value),
+                ip_address: document.getElementById('ip_address').value,
+                is_active: true
+            };
+            
+            const response = await fetch('/api/network-config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(config)
+            });
+            
+            if (response.ok) {
+                this.showNotification('Network configuration updated', 'success');
+            }
+        } catch (error) {
+            console.error('Error updating network config:', error);
+            this.showNotification('Error updating network configuration', 'error');
+        }
+    }
+    
+    updateTracksDisplay() {
+        const tbody = document.getElementById('tracks-table-body');
+        tbody.innerHTML = '';
+        
+        this.tracks.forEach(track => {
+            const row = this.createTrackRow(track);
+            tbody.appendChild(row);
+        });
+        
+        document.getElementById('total-tracks').textContent = this.tracks.size;
+    }
+    
+    createTrackRow(track) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${track.track_id}</td>
+            <td><span class="status-badge status-${track.type.toLowerCase()}">${track.type}</span></td>
+            <td><span class="status-badge status-${track.status.toLowerCase()}">${track.status}</span></td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary action-btn" onclick="dashboard.viewTrackDetails('${track.track_id}')">
+                    <i class="fas fa-eye"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-warning action-btn" onclick="dashboard.trackOnMap('${track.track_id}')">
+                    <i class="fas fa-map-marker-alt"></i>
+                </button>
+            </td>
+        `;
+        return row;
+    }
+    
+    updateTrackCounts() {
+        const counts = {
+            aircraft: 0,
+            vessel: 0,
+            vehicle: 0,
+            unknown: 0
+        };
+        
+        this.tracks.forEach(track => {
+            const type = track.type.toLowerCase();
+            if (counts.hasOwnProperty(type)) {
+                counts[type]++;
+            } else {
+                counts.unknown++;
+            }
+        });
+        
+        document.getElementById('aircraft-count').textContent = counts.aircraft;
+        document.getElementById('vessel-count').textContent = counts.vessel;
+        document.getElementById('vehicle-count').textContent = counts.vehicle;
+        document.getElementById('unknown-count').textContent = counts.unknown;
+    }
+    
+    filterTracks(type) {
+        // Implementation for track filtering
+        if (window.mapManager) {
+            window.mapManager.filterByType(type);
+        }
+        
+        // Update table display
+        const rows = document.querySelectorAll('#tracks-table-body tr');
+        rows.forEach(row => {
+            const trackType = row.cells[1].textContent.trim();
+            if (!type || trackType === type) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+    
+    searchTracks(query) {
+        const rows = document.querySelectorAll('#tracks-table-body tr');
+        rows.forEach(row => {
+            const trackId = row.cells[0].textContent.trim();
+            if (!query || trackId.toLowerCase().includes(query.toLowerCase())) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+    
+    async refreshEvents() {
+        try {
+            const response = await fetch('/api/events');
+            const data = await response.json();
+            this.events = data.events;
+            
+            this.updateEventsDisplay();
+        } catch (error) {
+            console.error('Error refreshing events:', error);
+        }
+    }
+    
+    updateEventsDisplay() {
+        const tbody = document.getElementById('events-table-body');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '';
+        
+        this.events.slice(0, 50).forEach(event => { // Show latest 50 events
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${new Date(event.timestamp).toLocaleString()}</td>
+                <td>${event.track_id}</td>
+                <td><span class="status-badge status-${event.event_type.toLowerCase().replace(' ', '-')}">${event.event_type}</span></td>
+                <td>${event.description}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+    
+    async loadEventLog() {
+        try {
+            const response = await fetch(`/api/events?page=${this.currentPage}&per_page=20`);
+            const data = await response.json();
+            
+            this.updateEventLogDisplay(data.events);
+            this.updatePagination(data.current_page, data.pages);
+        } catch (error) {
+            console.error('Error loading event log:', error);
+        }
+    }
+    
+    updateEventLogDisplay(events) {
+        const tbody = document.getElementById('events-log-body');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '';
+        
+        events.forEach(event => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${new Date(event.timestamp).toLocaleString()}</td>
+                <td>${event.track_id}</td>
+                <td><span class="status-badge status-${event.event_type.toLowerCase().replace(' ', '-')}">${event.event_type}</span></td>
+                <td>${event.description}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-info action-btn" onclick="dashboard.viewEventDetails(${event.id})">
+                        <i class="fas fa-info-circle"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+    
+    updatePagination(currentPage, totalPages) {
+        const pagination = document.getElementById('log-pagination');
+        if (!pagination) return;
+        
+        pagination.innerHTML = '';
+        
+        // Previous button
+        const prevItem = document.createElement('li');
+        prevItem.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+        prevItem.innerHTML = `<a class="page-link" href="#" onclick="dashboard.goToPage(${currentPage - 1})">Previous</a>`;
+        pagination.appendChild(prevItem);
+        
+        // Page numbers
+        for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) {
+            const pageItem = document.createElement('li');
+            pageItem.className = `page-item ${i === currentPage ? 'active' : ''}`;
+            pageItem.innerHTML = `<a class="page-link" href="#" onclick="dashboard.goToPage(${i})">${i}</a>`;
+            pagination.appendChild(pageItem);
+        }
+        
+        // Next button
+        const nextItem = document.createElement('li');
+        nextItem.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+        nextItem.innerHTML = `<a class="page-link" href="#" onclick="dashboard.goToPage(${currentPage + 1})">Next</a>`;
+        pagination.appendChild(nextItem);
+    }
+    
+    goToPage(page) {
+        this.currentPage = page;
+        this.loadEventLog();
+    }
+    
+    filterEventLog() {
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+        const eventType = document.getElementById('event-type-filter').value;
+        
+        // Implementation for filtering event log
+        console.log('Filtering events:', { startDate, endDate, eventType });
+        this.showNotification('Event log filtered', 'info');
+    }
+    
+    exportEventLog() {
+        // Implementation for exporting event log
+        const data = this.events.map(event => ({
+            timestamp: event.timestamp,
+            track_id: event.track_id,
+            event_type: event.event_type,
+            description: event.description
+        }));
+        
+        const csv = this.convertToCSV(data);
+        this.downloadCSV(csv, 'event_log.csv');
+    }
+    
+    convertToCSV(data) {
+        const headers = Object.keys(data[0]).join(',');
+        const rows = data.map(row => Object.values(row).join(','));
+        return [headers, ...rows].join('\n');
+    }
+    
+    downloadCSV(csv, filename) {
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        window.URL.revokeObjectURL(url);
+    }
+    
+    startLiveDemo() {
+        this.isLiveDemo = true;
+        document.getElementById('start-demo-btn').disabled = true;
+        document.getElementById('stop-demo-btn').disabled = false;
+        this.showNotification('Live demo started', 'success');
+    }
+    
+    stopLiveDemo() {
+        this.isLiveDemo = false;
+        document.getElementById('start-demo-btn').disabled = false;
+        document.getElementById('stop-demo-btn').disabled = true;
+        this.showNotification('Live demo stopped', 'info');
+    }
+    
+    toggleBattleMode() {
+        this.isBattleMode = !this.isBattleMode;
+        const btn = document.getElementById('battle-mode-btn');
+        
+        if (this.isBattleMode) {
+            btn.innerHTML = '<i class="fas fa-globe"></i> Standard View';
+            btn.classList.add('active');
+            if (window.mapManager) {
+                window.mapManager.switchTo3D();
+            }
+            this.showNotification('Battle Mode activated', 'success');
+        } else {
+            btn.innerHTML = '<i class="fas fa-fighter-jet"></i> Battle View';
+            btn.classList.remove('active');
+            if (window.mapManager) {
+                window.mapManager.switchTo2D();
+            }
+            this.showNotification('Standard view activated', 'info');
+        }
+    }
+    
+    viewTrackDetails(trackId) {
+        const track = this.tracks.get(trackId);
+        if (track) {
+            alert(`Track Details:\nID: ${track.track_id}\nType: ${track.type}\nPosition: ${track.latitude}, ${track.longitude}\nStatus: ${track.status}`);
+        }
+    }
+    
+    trackOnMap(trackId) {
+        if (window.mapManager) {
+            window.mapManager.focusOnTrack(trackId);
+        }
+    }
+    
+    viewEventDetails(eventId) {
+        const event = this.events.find(e => e.id === eventId);
+        if (event) {
+            alert(`Event Details:\nID: ${event.id}\nTrack: ${event.track_id}\nType: ${event.event_type}\nTime: ${event.timestamp}\nDescription: ${event.description}`);
+        }
+    }
+    
+    onTrackUpdate(tracks) {
+        tracks.forEach(track => {
+            this.tracks.set(track.track_id, track);
+        });
+        
+        this.updateTracksDisplay();
+        this.updateTrackCounts();
+        
+        if (window.mapManager) {
+            window.mapManager.updateTracks(tracks);
+        }
+    }
+    
+    showNotification(message, type = 'info') {
+        // Simple notification system
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
+        notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        notification.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 5000);
+    }
+}
+
+// Initialize dashboard when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    window.dashboard = new SurveillanceDashboard();
+});

@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="tab-content" id="mainTabContent">
+    <!-- Dashboard Tab -->
+    <div class="tab-pane fade show active" id="dashboard" role="tabpanel">
+        <div class="dashboard-header">
+            <h2><i class="fas fa-globe"></i> Common Operating Picture</h2>
+            <div class="dashboard-controls">
+                <button class="btn btn-outline-light btn-sm" id="start-demo-btn">
+                    <i class="fas fa-play"></i> Start Live Demo
+                </button>
+                <button class="btn btn-outline-light btn-sm" id="stop-demo-btn">
+                    <i class="fas fa-stop"></i> Stop Live Demo
+                </button>
+                <button class="btn btn-danger btn-sm" id="battle-mode-btn">
+                    <i class="fas fa-fighter-jet"></i> Battle View
+                </button>
+            </div>
+        </div>
+        
+        <div class="map-container">
+            <div id="leaflet-map" class="map-view"></div>
+            <div id="cesium-map" class="map-view" style="display: none;"></div>
+            
+            <!-- Track Legend -->
+            <div class="track-legend">
+                <h6>Track Legend</h6>
+                <div class="legend-item">
+                    <i class="fas fa-plane legend-icon aircraft"></i>
+                    <span class="legend-count" id="aircraft-count">0</span>
+                    <span>Aircraft</span>
+                </div>
+                <div class="legend-item">
+                    <i class="fas fa-ship legend-icon vessel"></i>
+                    <span class="legend-count" id="vessel-count">0</span>
+                    <span>Vessels</span>
+                </div>
+                <div class="legend-item">
+                    <i class="fas fa-car legend-icon vehicle"></i>
+                    <span class="legend-count" id="vehicle-count">0</span>
+                    <span>Vehicles</span>
+                </div>
+                <div class="legend-item">
+                    <i class="fas fa-question-circle legend-icon unknown"></i>
+                    <span class="legend-count" id="unknown-count">0</span>
+                    <span>Unknown</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Active Tracks Panel -->
+        <div class="active-tracks-panel">
+            <h6><i class="fas fa-list"></i> Active Tracks <span class="badge bg-primary" id="total-tracks">0</span></h6>
+            <div class="tracks-table-container">
+                <table class="table table-dark table-sm">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tracks-table-body">
+                        <!-- Tracks will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Event Monitor Tab -->
+    <div class="tab-pane fade" id="event-monitor" role="tabpanel">
+        <div class="dashboard-header">
+            <h2><i class="fas fa-eye"></i> Event Monitor</h2>
+            <div class="dashboard-controls">
+                <button class="btn btn-outline-light btn-sm" id="refresh-events-btn">
+                    <i class="fas fa-sync"></i> Refresh
+                </button>
+            </div>
+        </div>
+        
+        <div class="events-table-container">
+            <table class="table table-dark table-striped">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Track ID</th>
+                        <th>Event Type</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody id="events-table-body">
+                    <!-- Events will be populated here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Event Log Tab -->
+    <div class="tab-pane fade" id="event-log" role="tabpanel">
+        <div class="dashboard-header">
+            <h2><i class="fas fa-list"></i> Event Log</h2>
+            <div class="dashboard-controls">
+                <button class="btn btn-outline-light btn-sm" id="export-log-btn">
+                    <i class="fas fa-download"></i> Export Log
+                </button>
+            </div>
+        </div>
+        
+        <div class="log-filters">
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label">Start Date</label>
+                    <input type="datetime-local" class="form-control form-control-sm" id="start-date">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">End Date</label>
+                    <input type="datetime-local" class="form-control form-control-sm" id="end-date">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Event Type</label>
+                    <select class="form-select form-select-sm" id="event-type-filter">
+                        <option value="">All Types</option>
+                        <option value="Position Update">Position Update</option>
+                        <option value="Status Change">Status Change</option>
+                        <option value="Alert">Alert</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <button class="btn btn-primary btn-sm d-block" id="filter-log-btn">
+                        <i class="fas fa-search"></i> Filter
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="events-log-container">
+            <table class="table table-dark table-striped">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Track ID</th>
+                        <th>Event Type</th>
+                        <th>Description</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody id="events-log-body">
+                    <!-- Event log will be populated here -->
+                </tbody>
+            </table>
+        </div>
+        
+        <nav aria-label="Event log pagination">
+            <ul class="pagination pagination-sm justify-content-center" id="log-pagination">
+                <!-- Pagination will be populated here -->
+            </ul>
+        </nav>
+    </div>
+    
+    <!-- Messenger Tab -->
+    <div class="tab-pane fade" id="messenger" role="tabpanel">
+        <div class="dashboard-header">
+            <h2><i class="fas fa-comments"></i> Messenger</h2>
+        </div>
+        
+        <div class="messenger-placeholder">
+            <div class="text-center">
+                <i class="fas fa-comments fa-5x text-muted mb-3"></i>
+                <h4 class="text-muted">Messenger Feature</h4>
+                <p class="text-muted">This feature will be implemented in a future update.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

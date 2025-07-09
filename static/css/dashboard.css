@@ -202,9 +202,9 @@ html {
 /* Map container */
 .map-container {
     position: relative;
-    height: calc(100vh - 220px);
+    height: calc(100vh - 320px);
     min-height: 400px;
-    margin: 20px;
+    margin: 15px;
     border: 2px solid #3b4168;
     border-radius: 8px;
     overflow: hidden;
@@ -214,14 +214,29 @@ html {
 /* Responsive map sizing */
 @media (max-width: 768px) {
     .map-container {
-        height: calc(100vh - 250px);
+        height: calc(100vh - 200px);
         margin: 10px;
         min-height: 300px;
     }
     
     .active-tracks-panel {
-        height: 200px;
-        max-height: 200px;
+        height: 150px;
+        max-height: 150px;
+    }
+    
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+    }
+    
+    .sidebar.open {
+        display: block;
+    }
+    
+    .main-content {
+        margin-left: 0;
+        width: 100%;
     }
 }
 

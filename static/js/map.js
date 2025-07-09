@@ -133,7 +133,10 @@ class MapManager {
             // Load 3D buildings with proper depth using async approach
             this.load3DBuildings();
             
-
+            console.log('Cesium 3D Map initialized successfully');
+        } catch (error) {
+            console.error('Error initializing Cesium map:', error);
+        }
     }
     
     async load3DBuildings() {
@@ -209,51 +212,6 @@ class MapManager {
         });
         
         console.log('Procedural 3D buildings with depth created');
-    }
-            
-        } catch (error) {
-            console.error('Error initializing Cesium:', error);
-            console.log('Trying fallback Cesium configuration...');
-            
-            // Fallback: Use most basic configuration
-            try {
-                this.cesiumViewer = new Cesium.Viewer('cesium-map', {
-                    baseLayerPicker: false,
-                    geocoder: false,
-                    homeButton: false,
-                    sceneModePicker: false,
-                    navigationHelpButton: false,
-                    animation: false,
-                    timeline: false,
-                    fullscreenButton: false,
-                    vrButton: false,
-                    infoBox: false,
-                    selectionIndicator: false,
-                    shouldAnimate: false
-                });
-                
-                // Set basic camera view
-                this.cesiumViewer.camera.setView({
-                    destination: Cesium.Cartesian3.fromDegrees(-95.0, 39.0, 2000000)
-                });
-                
-                console.log('Cesium initialized with fallback configuration');
-                
-                // Test if viewer is actually working
-                setTimeout(() => {
-                    if (this.cesiumViewer && this.cesiumViewer.scene) {
-                        console.log('Cesium scene verified - 3D mode ready');
-                    } else {
-                        console.error('Cesium scene not available');
-                    }
-                }, 1000);
-                
-            } catch (fallbackError) {
-                console.error('Cesium fallback also failed:', fallbackError);
-                console.log('3D Battle View unavailable - WebGL support required');
-                this.cesiumViewer = null;
-            }
-        }
     }
     
     addMapInfoControl() {

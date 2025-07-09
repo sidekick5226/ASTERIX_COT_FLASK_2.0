@@ -1,178 +1,210 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="tab-content" id="mainTabContent">
-    <!-- Dashboard Tab -->
-    <div class="tab-pane fade show active" id="dashboard" role="tabpanel">
-        <div class="dashboard-header">
-            <h2><i class="fas fa-globe"></i> Common Operating Picture</h2>
-            <div class="dashboard-controls">
-                <button class="btn btn-success btn-sm" id="start-demo-btn">
-                    <i class="fas fa-satellite-dish"></i> Start Surveillance
-                </button>
-                <button class="btn btn-warning btn-sm" id="stop-demo-btn" disabled>
-                    <i class="fas fa-stop-circle"></i> Stop & Clear
-                </button>
-                <button class="btn btn-danger btn-sm" id="battle-mode-btn">
-                    <i class="fas fa-globe-americas"></i> Battle View
-                </button>
-            </div>
+<!-- Dashboard Tab -->
+<div id="dashboard" class="flex flex-col h-screen lg:h-screen bg-slate-800">
+    <!-- Dashboard Header -->
+    <div class="flex items-center justify-between p-4 bg-navy border-b border-slate-600">
+        <h2 class="text-xl font-bold text-white">
+            <i class="fas fa-globe mr-2"></i> Common Operating Picture
+        </h2>
+        <div class="flex space-x-2">
+            <button class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" id="start-demo-btn">
+                <i class="fas fa-satellite-dish mr-1"></i> Start Surveillance
+            </button>
+            <button class="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors disabled:opacity-50" id="stop-demo-btn" disabled>
+                <i class="fas fa-stop-circle mr-1"></i> Stop & Clear
+            </button>
+            <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" id="battle-mode-btn">
+                <i class="fas fa-globe-americas mr-1"></i> Battle View
+            </button>
         </div>
-        
-        <div class="map-container">
-            <div id="leaflet-map" class="map-view"></div>
-            <div id="cesium-map" class="map-view" style="display: none;"></div>
+    </div>
+    
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        <!-- Map Container -->
+        <div class="flex-1 relative h-64 lg:h-full">
+            <div id="leaflet-map" class="absolute inset-0"></div>
+            <div id="cesium-map" class="absolute inset-0 hidden"></div>
             
-            <!-- Track Legend -->
-            <div class="track-legend">
-                <h6>Track Legend</h6>
-                <div class="legend-item">
-                    <i class="fas fa-plane legend-icon aircraft"></i>
-                    <span class="legend-count" id="aircraft-count">0</span>
-                    <span>Aircraft</span>
-                </div>
-                <div class="legend-item">
-                    <i class="fas fa-ship legend-icon vessel"></i>
-                    <span class="legend-count" id="vessel-count">0</span>
-                    <span>Vessels</span>
-                </div>
-                <div class="legend-item">
-                    <i class="fas fa-car legend-icon vehicle"></i>
-                    <span class="legend-count" id="vehicle-count">0</span>
-                    <span>Vehicles</span>
-                </div>
-                <div class="legend-item">
-                    <i class="fas fa-question-circle legend-icon unknown"></i>
-                    <span class="legend-count" id="unknown-count">0</span>
-                    <span>Unknown</span>
+            <!-- Track Legend - Overlay -->
+            <div class="absolute top-4 right-4 bg-navy/90 backdrop-blur-sm border border-slate-600 rounded-lg p-3 lg:p-4 min-w-40 lg:min-w-48 text-xs lg:text-sm">
+                <h6 class="text-sm font-semibold text-white mb-3">Track Legend</h6>
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between text-sm">
+                        <div class="flex items-center">
+                            <i class="fas fa-plane text-blue-400 mr-2"></i>
+                            <span class="text-slate-300">Aircraft</span>
+                        </div>
+                        <span class="bg-blue-600 text-white px-2 py-0.5 rounded text-xs font-medium" id="aircraft-count">0</span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <div class="flex items-center">
+                            <i class="fas fa-ship text-cyan-400 mr-2"></i>
+                            <span class="text-slate-300">Vessels</span>
+                        </div>
+                        <span class="bg-cyan-600 text-white px-2 py-0.5 rounded text-xs font-medium" id="vessel-count">0</span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <div class="flex items-center">
+                            <i class="fas fa-car text-green-400 mr-2"></i>
+                            <span class="text-slate-300">Vehicles</span>
+                        </div>
+                        <span class="bg-green-600 text-white px-2 py-0.5 rounded text-xs font-medium" id="vehicle-count">0</span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <div class="flex items-center">
+                            <i class="fas fa-question-circle text-gray-400 mr-2"></i>
+                            <span class="text-slate-300">Unknown</span>
+                        </div>
+                        <span class="bg-gray-600 text-white px-2 py-0.5 rounded text-xs font-medium" id="unknown-count">0</span>
+                    </div>
                 </div>
             </div>
         </div>
         
         <!-- Active Tracks Panel -->
-        <div class="active-tracks-panel">
-            <h6><i class="fas fa-list"></i> Active Tracks <span class="badge bg-primary" id="total-tracks">0</span></h6>
-            <div class="tracks-table-container">
-                <table class="table table-dark table-sm">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Type</th>
-                            <th>Status</th>
-                            <th>Actions</th>
+        <div class="w-full lg:w-96 bg-slate-700 border-t lg:border-t-0 lg:border-l border-slate-600 flex flex-col max-h-96 lg:max-h-full">
+            <div class="p-4 border-b border-slate-600">
+                <h6 class="text-sm font-semibold text-white flex items-center">
+                    <i class="fas fa-list mr-2"></i> Active Tracks
+                    <span class="bg-blue-600 text-white px-2 py-0.5 rounded text-xs font-medium ml-2" id="total-tracks">0</span>
+                </h6>
+            </div>
+            <div class="flex-1 overflow-y-auto">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-slate-800 sticky top-0">
+                            <tr class="text-left text-slate-300">
+                                <th class="px-3 py-2 font-medium">ID</th>
+                                <th class="px-3 py-2 font-medium">Type</th>
+                                <th class="px-3 py-2 font-medium">Status</th>
+                                <th class="px-3 py-2 font-medium">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tracks-table-body" class="text-slate-200">
+                            <!-- Tracks will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Event Monitor Tab -->
+<div id="event-monitor" class="hidden flex flex-col h-screen bg-slate-800">
+    <div class="flex items-center justify-between p-4 bg-navy border-b border-slate-600">
+        <h2 class="text-xl font-bold text-white">
+            <i class="fas fa-eye mr-2"></i> Event Monitor
+        </h2>
+        <button class="bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" id="refresh-events-btn">
+            <i class="fas fa-sync mr-1"></i> Refresh
+        </button>
+    </div>
+    
+    <div class="flex-1 overflow-hidden p-4">
+        <div class="bg-slate-700 rounded-lg h-full overflow-hidden">
+            <div class="overflow-x-auto h-full">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-800 sticky top-0">
+                        <tr class="text-left text-slate-300">
+                            <th class="px-4 py-3 font-medium">Timestamp</th>
+                            <th class="px-4 py-3 font-medium">Track ID</th>
+                            <th class="px-4 py-3 font-medium">Event Type</th>
+                            <th class="px-4 py-3 font-medium">Description</th>
                         </tr>
                     </thead>
-                    <tbody id="tracks-table-body">
-                        <!-- Tracks will be populated here -->
+                    <tbody id="events-table-body" class="text-slate-200">
+                        <!-- Events will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Event Log Tab -->
+<div id="event-log" class="hidden flex flex-col h-screen bg-slate-800">
+    <div class="flex items-center justify-between p-4 bg-navy border-b border-slate-600">
+        <h2 class="text-xl font-bold text-white">
+            <i class="fas fa-list mr-2"></i> Event Log
+        </h2>
+        <button class="bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" id="export-log-btn">
+            <i class="fas fa-download mr-1"></i> Export Log
+        </button>
+    </div>
+    
+    <!-- Filters -->
+    <div class="p-4 bg-slate-700 border-b border-slate-600">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-xs text-slate-400 mb-1">Start Date</label>
+                <input type="datetime-local" class="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-white" id="start-date">
+            </div>
+            <div>
+                <label class="block text-xs text-slate-400 mb-1">End Date</label>
+                <input type="datetime-local" class="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-white" id="end-date">
+            </div>
+            <div>
+                <label class="block text-xs text-slate-400 mb-1">Event Type</label>
+                <select class="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-white" id="event-type-filter">
+                    <option value="">All Types</option>
+                    <option value="Position Update">Position Update</option>
+                    <option value="Status Change">Status Change</option>
+                    <option value="Alert">Alert</option>
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button class="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" id="filter-log-btn">
+                    <i class="fas fa-search mr-1"></i> Filter
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Log Table -->
+    <div class="flex-1 overflow-hidden p-4">
+        <div class="bg-slate-700 rounded-lg h-full overflow-hidden">
+            <div class="overflow-x-auto h-full">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-800 sticky top-0">
+                        <tr class="text-left text-slate-300">
+                            <th class="px-4 py-3 font-medium">Timestamp</th>
+                            <th class="px-4 py-3 font-medium">Track ID</th>
+                            <th class="px-4 py-3 font-medium">Event Type</th>
+                            <th class="px-4 py-3 font-medium">Description</th>
+                            <th class="px-4 py-3 font-medium">Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="events-log-body" class="text-slate-200">
+                        <!-- Event log will be populated here -->
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
     
-    <!-- Event Monitor Tab -->
-    <div class="tab-pane fade" id="event-monitor" role="tabpanel">
-        <div class="dashboard-header">
-            <h2><i class="fas fa-eye"></i> Event Monitor</h2>
-            <div class="dashboard-controls">
-                <button class="btn btn-outline-light btn-sm" id="refresh-events-btn">
-                    <i class="fas fa-sync"></i> Refresh
-                </button>
-            </div>
-        </div>
-        
-        <div class="events-table-container">
-            <table class="table table-dark table-striped">
-                <thead>
-                    <tr>
-                        <th>Timestamp</th>
-                        <th>Track ID</th>
-                        <th>Event Type</th>
-                        <th>Description</th>
-                    </tr>
-                </thead>
-                <tbody id="events-table-body">
-                    <!-- Events will be populated here -->
-                </tbody>
-            </table>
+    <!-- Pagination -->
+    <div class="p-4 border-t border-slate-600">
+        <div class="flex justify-center space-x-2" id="log-pagination">
+            <!-- Pagination will be populated here -->
         </div>
     </div>
-    
-    <!-- Event Log Tab -->
-    <div class="tab-pane fade" id="event-log" role="tabpanel">
-        <div class="dashboard-header">
-            <h2><i class="fas fa-list"></i> Event Log</h2>
-            <div class="dashboard-controls">
-                <button class="btn btn-outline-light btn-sm" id="export-log-btn">
-                    <i class="fas fa-download"></i> Export Log
-                </button>
-            </div>
-        </div>
-        
-        <div class="log-filters">
-            <div class="row">
-                <div class="col-md-3">
-                    <label class="form-label">Start Date</label>
-                    <input type="datetime-local" class="form-control form-control-sm" id="start-date">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">End Date</label>
-                    <input type="datetime-local" class="form-control form-control-sm" id="end-date">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Event Type</label>
-                    <select class="form-select form-select-sm" id="event-type-filter">
-                        <option value="">All Types</option>
-                        <option value="Position Update">Position Update</option>
-                        <option value="Status Change">Status Change</option>
-                        <option value="Alert">Alert</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">&nbsp;</label>
-                    <button class="btn btn-primary btn-sm d-block" id="filter-log-btn">
-                        <i class="fas fa-search"></i> Filter
-                    </button>
-                </div>
-            </div>
-        </div>
-        
-        <div class="events-log-container">
-            <table class="table table-dark table-striped">
-                <thead>
-                    <tr>
-                        <th>Timestamp</th>
-                        <th>Track ID</th>
-                        <th>Event Type</th>
-                        <th>Description</th>
-                        <th>Details</th>
-                    </tr>
-                </thead>
-                <tbody id="events-log-body">
-                    <!-- Event log will be populated here -->
-                </tbody>
-            </table>
-        </div>
-        
-        <nav aria-label="Event log pagination">
-            <ul class="pagination pagination-sm justify-content-center" id="log-pagination">
-                <!-- Pagination will be populated here -->
-            </ul>
-        </nav>
+</div>
+
+<!-- Messenger Tab -->
+<div id="messenger" class="hidden flex flex-col h-screen bg-slate-800">
+    <div class="flex items-center justify-between p-4 bg-navy border-b border-slate-600">
+        <h2 class="text-xl font-bold text-white">
+            <i class="fas fa-comments mr-2"></i> Messenger
+        </h2>
     </div>
     
-    <!-- Messenger Tab -->
-    <div class="tab-pane fade" id="messenger" role="tabpanel">
-        <div class="dashboard-header">
-            <h2><i class="fas fa-comments"></i> Messenger</h2>
-        </div>
-        
-        <div class="messenger-placeholder">
-            <div class="text-center">
-                <i class="fas fa-comments fa-5x text-muted mb-3"></i>
-                <h4 class="text-muted">Messenger Feature</h4>
-                <p class="text-muted">This feature will be implemented in a future update.</p>
-            </div>
+    <div class="flex-1 flex items-center justify-center p-8">
+        <div class="text-center">
+            <i class="fas fa-comments text-6xl text-slate-500 mb-4"></i>
+            <h4 class="text-xl font-semibold text-slate-300 mb-2">Messenger Feature</h4>
+            <p class="text-slate-400">This feature will be implemented in a future update.</p>
         </div>
     </div>
 </div>

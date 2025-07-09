@@ -48,32 +48,13 @@ class SurveillanceDashboard {
     }
     
     setupTabHandlers() {
-        const tabs = document.querySelectorAll('[data-bs-toggle="tab"]');
-        tabs.forEach(tab => {
-            tab.addEventListener('shown.bs.tab', (e) => {
-                const target = e.target.getAttribute('data-bs-target');
-                this.handleTabChange(target);
-            });
-        });
+        // Tab handlers are now managed by the tabs.js file and Alpine.js
+        // No need to set up Bootstrap tab handlers
     }
     
     handleTabChange(target) {
-        switch (target) {
-            case '#dashboard':
-                if (window.mapManager) {
-                    setTimeout(() => window.mapManager.invalidateSize(), 100);
-                }
-                break;
-            case '#event-monitor':
-                this.refreshEvents();
-                break;
-            case '#event-log':
-                this.loadEventLog();
-                break;
-            case '#messenger':
-                // Placeholder for future implementation
-                break;
-        }
+        // Tab changes are now handled by tabs.js
+        // This method is kept for compatibility but no longer needed
     }
     
     async loadInitialData() {
@@ -179,17 +160,41 @@ class SurveillanceDashboard {
     
     createTrackRow(track) {
         const row = document.createElement('tr');
+        
+        const typeColors = {
+            'Aircraft': 'bg-blue-600',
+            'Vessel': 'bg-cyan-600',
+            'Vehicle': 'bg-green-600'
+        };
+        
+        const statusColors = {
+            'Active': 'bg-green-600',
+            'Inactive': 'bg-red-600',
+            'Unknown': 'bg-gray-600'
+        };
+        
+        const trackType = track.track_type || track.type || 'Unknown';
+        const typeColor = typeColors[trackType] || 'bg-gray-600';
+        const statusColor = statusColors[track.status] || 'bg-gray-600';
+        
+        row.className = 'border-b border-slate-600 hover:bg-slate-600/50';
         row.innerHTML = `
-            <td>${track.track_id}</td>
-            <td><span class="status-badge status-${(track.track_type || track.type || 'unknown').toLowerCase()}">${track.track_type || track.type || 'Unknown'}</span></td>
-            <td><span class="status-badge status-${track.status.toLowerCase()}">${track.status}</span></td>
-            <td>
-                <button class="btn btn-sm btn-outline-primary action-btn" onclick="dashboard.viewTrackDetails('${track.track_id}')">
-                    <i class="fas fa-eye"></i>
-                </button>
-                <button class="btn btn-sm btn-outline-warning action-btn" onclick="dashboard.trackOnMap('${track.track_id}')">
-                    <i class="fas fa-map-marker-alt"></i>
-                </button>
+            <td class="px-3 py-2">${track.track_id}</td>
+            <td class="px-3 py-2">
+                <span class="px-2 py-1 rounded text-xs font-medium text-white ${typeColor}">${trackType}</span>
+            </td>
+            <td class="px-3 py-2">
+                <span class="px-2 py-1 rounded text-xs font-medium text-white ${statusColor}">${track.status}</span>
+            </td>
+            <td class="px-3 py-2">
+                <div class="flex space-x-1">
+                    <button class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs transition-colors" onclick="dashboard.viewTrackDetails('${track.track_id}')">
+                        <i class="fas fa-info-circle"></i>
+                    </button>
+                    <button class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs transition-colors" onclick="dashboard.trackOnMap('${track.track_id}')">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </button>
+                </div>
             </td>
         `;
         return row;

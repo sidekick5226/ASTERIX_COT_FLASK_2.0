@@ -179,12 +179,16 @@ class MapManager {
     }
     
     updateTracks(tracks) {
+        console.log(`Updating ${tracks.length} tracks in ${this.is3DMode ? '3D Battle' : '2D Standard'} view`);
         this.tracks = tracks;
         
-        if (this.is3DMode && this.cesiumViewer) {
-            this.updateCesiumTracks(tracks);
-        } else if (this.leafletMap) {
+        // Always update both views to keep them synchronized
+        if (this.leafletMap) {
             this.updateLeafletTracks(tracks);
+        }
+        
+        if (this.cesiumViewer) {
+            this.updateCesiumTracks(tracks);
         }
     }
     
@@ -197,47 +201,17 @@ class MapManager {
             if (this.trackMarkers.has(trackId)) {
                 const marker = this.trackMarkers.get(trackId);
                 
-                // Store previous position for trail
-                const oldPosition = marker.getLatLng();
-                this.addToTrail(trackId, [oldPosition.lat, oldPosition.lng]);
-                
-                // Update marker position with smooth animation
+                // Update marker position
                 marker.setLatLng(newPosition);
                 
                 // Update popup content  
-                const popupContent = `
-                    <div style="color: #000; min-width: 200px;">
-                        <h6 style="color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">
-                            ${track.callsign || track.track_id}
-                        </h6>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.85rem;">
-                            <div>
-                                <strong>Type:</strong><br>${track.type}
-                            </div>
-                            <div>
-                                <strong>Status:</strong><br><span style="color: ${track.status === 'Active' ? '#10b981' : '#ef4444'}">${track.status}</span>
-                            </div>
-                            <div>
-                                <strong>Position:</strong><br>${track.latitude.toFixed(4)}, ${track.longitude.toFixed(4)}
-                            </div>
-                            ${track.altitude ? `<div><strong>Altitude:</strong><br>${Math.round(track.altitude)} ft</div>` : ''}
-                            ${track.speed ? `<div><strong>Speed:</strong><br>${Math.round(track.speed)} kts</div>` : ''}
-                            ${track.heading ? `<div><strong>Heading:</strong><br>${Math.round(track.heading)}°</div>` : ''}
-                        </div>
-                        <div style="margin-top: 10px; padding-top: 5px; border-top: 1px solid #e2e8f0; font-size: 0.75rem; color: #64748b;">
-                            Last Update: ${new Date(track.last_updated).toLocaleString()}
-                        </div>
-                    </div>
-                `;
+                const popupContent = this.createPopupContent(track);
                 marker.setPopupContent(popupContent);
             } else {
                 // Create new marker
                 const marker = this.createLeafletMarker(track);
                 marker.addTo(this.leafletMap);
                 this.trackMarkers.set(trackId, marker);
-                
-                // Initialize trail
-                this.trackTrails.set(trackId, []);
             }
         });
         
@@ -247,7 +221,6 @@ class MapManager {
             if (!activeTrackIds.has(trackId)) {
                 this.leafletMap.removeLayer(marker);
                 this.trackMarkers.delete(trackId);
-                this.removeTrail(trackId);
             }
         });
     }
@@ -273,14 +246,20 @@ class MapManager {
         });
         
         // Add popup with track details
-        const popupContent = `
+        const popupContent = this.createPopupContent(track);
+        marker.bindPopup(popupContent);
+        return marker;
+    }
+    
+    createPopupContent(track) {
+        return `
             <div style="color: #000; min-width: 200px;">
                 <h6 style="color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">
                     ${track.callsign || track.track_id}
                 </h6>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.85rem;">
                     <div>
-                        <strong>Type:</strong><br>${track.type}
+                        <strong>Type:</strong><br>${track.track_type || track.type}
                     </div>
                     <div>
                         <strong>Status:</strong><br><span style="color: ${track.status === 'Active' ? '#10b981' : '#ef4444'}">${track.status}</span>
@@ -295,16 +274,8 @@ class MapManager {
                 <div style="margin-top: 10px; padding-top: 5px; border-top: 1px solid #e2e8f0; font-size: 0.75rem; color: #64748b;">
                     Last Update: ${new Date(track.last_updated).toLocaleString()}
                 </div>
-                <div style="margin-top: 8px;">
-                    <button onclick="dashboard.trackOnMap('${track.track_id}')" style="background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">
-                        Center on Map
-                    </button>
-                </div>
             </div>
         `;
-        marker.bindPopup(popupContent);
-        
-        return marker;
     }
     
     updateCesiumTracks(tracks) {
@@ -430,7 +401,11 @@ class MapManager {
                 try {
                     this.cesiumViewer.resize();
                     this.cesiumViewer.scene.requestRender();
-                    this.updateCesiumTracks(this.tracks);
+                    // Force update with current tracks to ensure synchronization
+                    if (this.tracks && this.tracks.length > 0) {
+                        this.updateCesiumTracks(this.tracks);
+                        console.log(`Updated 3D Battle View with ${this.tracks.length} tracks`);
+                    }
                     console.log('3D Battle View activated successfully');
                 } catch (error) {
                     console.error('Error activating 3D view:', error);

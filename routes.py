@@ -158,28 +158,34 @@ def generate_simulated_track_data():
     """Generate simulated track data for demonstration"""
     track_types = ['Aircraft', 'Vessel', 'Vehicle']
     
-    # Always clear existing tracks first, then create new ones
-    Track.query.delete()
-    
-    for i in range(10):
-        # Generate tracks within a reasonable geographical area (Eastern US seaboard region)
-        # This ensures all tracks are visible on the default map view
-        track_type = random.choice(track_types)
+    try:
+        # Always clear existing tracks first, then create new ones
+        Track.query.delete()
         
-        track = Track(
-            track_id=f"TRK{1000 + i}",
-            callsign=f"CALL{i:03d}",
-            track_type=track_type,
-            latitude=39.5 + random.uniform(-3, 3),    # NYC/Philadelphia area ±3 degrees
-            longitude=-75.0 + random.uniform(-4, 4),  # Eastern seaboard ±4 degrees  
-            altitude=random.uniform(100, 40000) if track_type == 'Aircraft' else (random.uniform(0, 100) if track_type == 'Vessel' else random.uniform(0, 1000)),
-            heading=random.uniform(0, 360),
-            speed=random.uniform(150, 600) if track_type == 'Aircraft' else (random.uniform(5, 40) if track_type == 'Vessel' else random.uniform(10, 80)),
-            status='Active'
-        )
-        db.session.add(track)
-    
-    db.session.commit()
+        for i in range(10):
+            # Generate tracks within a reasonable geographical area (Eastern US seaboard region)
+            # This ensures all tracks are visible on the default map view
+            track_type = random.choice(track_types)
+            
+            track = Track(
+                track_id=f"TRK{1000 + i}",
+                callsign=f"CALL{i:03d}",
+                track_type=track_type,
+                latitude=39.5 + random.uniform(-3, 3),    # NYC/Philadelphia area ±3 degrees
+                longitude=-75.0 + random.uniform(-4, 4),  # Eastern seaboard ±4 degrees  
+                altitude=random.uniform(100, 40000) if track_type == 'Aircraft' else (random.uniform(0, 100) if track_type == 'Vessel' else random.uniform(0, 1000)),
+                heading=random.uniform(0, 360),
+                speed=random.uniform(150, 600) if track_type == 'Aircraft' else (random.uniform(5, 40) if track_type == 'Vessel' else random.uniform(10, 80)),
+                status='Active'
+            )
+            db.session.add(track)
+        
+        db.session.commit()
+        print(f"Generated {10} tracks successfully")
+    except Exception as e:
+        print(f"Error generating tracks: {e}")
+        db.session.rollback()
+        raise
 
 def update_tracks_realtime():
     """Update tracks in real-time and emit to clients"""
@@ -245,7 +251,7 @@ def update_tracks_realtime():
         except Exception as e:
             print(f"Error updating tracks: {e}")
         
-        time.sleep(1)  # Update every second for real-time feel
+        time.sleep(2)  # Update every 2 seconds for better performance
 
 # Background thread management
 tracking_thread = None
@@ -372,15 +378,35 @@ def get_cot_batch():
 @app.route('/api/surveillance/start', methods=['POST'])
 def start_surveillance_api():
     """Start surveillance tracking"""
-    if start_surveillance():
+    global tracking_active, tracking_thread
+    
+    if not tracking_active:
+        try:
+            # Generate tracks immediately and synchronously for faster response
+            generate_simulated_track_data()
+            
+            # Start background tracking
+            tracking_active = True
+            if tracking_thread is None or not tracking_thread.is_alive():
+                tracking_thread = threading.Thread(target=update_tracks_realtime)
+                tracking_thread.daemon = True
+                tracking_thread.start()
+            
+            return jsonify({
+                'status': 'success',
+                'message': 'Surveillance started'
+            })
+        except Exception as e:
+            print(f"Error starting surveillance: {e}")
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to start surveillance'
+            }), 500
+    else:
         return jsonify({
-            'status': 'success',
-            'message': 'Surveillance started'
+            'status': 'info',
+            'message': 'Surveillance already running'
         })
-    return jsonify({
-        'status': 'info',
-        'message': 'Surveillance already running'
-    })
 
 @app.route('/api/surveillance/stop', methods=['POST'])
 def stop_surveillance_api():

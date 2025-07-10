@@ -193,6 +193,8 @@ class AdvancedCesiumManager {
     }
     
     updateUnitsFromCoT(tracks) {
+        console.log('Cesium updateUnitsFromCoT called with', tracks.length, 'tracks');
+        
         // Update or create unit entities from CoT track data
         tracks.forEach(track => {
             this.updateUnitEntity(track);
@@ -200,26 +202,33 @@ class AdvancedCesiumManager {
         
         // Remove entities for tracks that no longer exist
         this.cleanupOldEntities(tracks);
+        
+        console.log('Total entities now:', this.viewer.entities.values.length);
     }
     
     updateUnitEntity(track) {
         const entityId = `unit_${track.track_id}`;
         let entity = this.viewer.entities.getById(entityId);
         
+        const altitude = this.getUnitAltitude(track);
         const position = Cesium.Cartesian3.fromDegrees(
             track.longitude, 
             track.latitude, 
-            this.getUnitAltitude(track)
+            altitude
         );
+        
+        console.log(`Updating entity ${entityId} at [${track.longitude}, ${track.latitude}, ${altitude}]`);
         
         if (!entity) {
             // Create new unit entity
             entity = this.createUnitEntity(track, position);
             this.unitEntities.set(entityId, entity);
+            console.log(`Created new entity: ${entityId}`);
         } else {
             // Update existing entity position
             entity.position = position;
             entity.orientation = this.calculateOrientation(track);
+            console.log(`Updated existing entity: ${entityId}`);
         }
         
         // Update trail

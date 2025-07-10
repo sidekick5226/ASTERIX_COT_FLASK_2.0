@@ -477,6 +477,10 @@ class SurveillanceDashboard {
                             window.advancedCesiumManager.updateUnitsFromCoT(tracksArray);
                             console.log(`Updated 3D Battle View with ${tracksArray.length} tracks`);
                         }
+                        
+                        // Force battle mode flag
+                        this.isBattleMode = true;
+                        console.log('Battle mode flag set to:', this.isBattleMode);
                     }, 1000);
                 } catch (error) {
                     console.error('Failed to initialize Cesium viewer:', error);
@@ -559,6 +563,10 @@ class SurveillanceDashboard {
             window.mapManager.updateTracks(tracks);
             console.log(`Updating ${tracks.length} tracks in 2D Standard view`);
         }
+        
+        // Debug logging
+        console.log('Battle mode status:', this.isBattleMode);
+        console.log('CesiumManager exists:', !!window.advancedCesiumManager);
     }
 
     showNotification(message, type = 'info') {

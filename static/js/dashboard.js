@@ -558,15 +558,4 @@ class SurveillanceDashboard {
 // Initialize dashboard when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.dashboard = new SurveillanceDashboard();
-    
-    // Setup track popup close button
-    const closeButton = document.getElementById('close-track-popup');
-    if (closeButton) {
-        closeButton.addEventListener('click', () => {
-            const popup = document.getElementById('track-selection-popup');
-            if (popup) {
-                popup.classList.add('hidden');
-            }
-        });
-    }
 });

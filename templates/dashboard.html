@@ -62,6 +62,87 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Track Selection Popup - Battle View Only -->
+            <div id="track-selection-popup" class="absolute top-4 right-4 bg-navy/95 backdrop-blur-sm border border-slate-500 rounded-lg p-4 min-w-72 text-sm hidden">
+                <div class="flex items-center justify-between mb-3">
+                    <h6 class="text-sm font-semibold text-white" id="selected-track-id">TRK1006</h6>
+                    <button class="text-slate-400 hover:text-white transition-colors" id="close-track-popup">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="space-y-2 text-xs">
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                        <div class="text-slate-400">OBJECT ID</div>
+                        <div class="text-white font-mono" id="popup-object-id">3457608</div>
+                        
+                        <div class="text-slate-400">CALLSIGN</div>
+                        <div class="text-white font-mono" id="popup-callsign">N/A</div>
+                        
+                        <div class="text-slate-400">TYPE</div>
+                        <div class="text-white" id="popup-type">Aircraft</div>
+                        
+                        <div class="text-slate-400">DATE</div>
+                        <div class="text-white font-mono" id="popup-date">20240114</div>
+                        
+                        <div class="text-slate-400">RESOLUTION</div>
+                        <div class="text-white font-mono" id="popup-resolution">0.46</div>
+                        
+                        <div class="text-slate-400">ACCURACY (M)</div>
+                        <div class="text-white font-mono" id="popup-accuracy">5</div>
+                        
+                        <div class="text-slate-400">DESCRIPTION</div>
+                        <div class="text-white" id="popup-description">GEOINT</div>
+                        
+                        <div class="text-slate-400">SOURCE_INFO</div>
+                        <div class="text-white" id="popup-source-info">Vivid Advanced</div>
+                        
+                        <div class="text-slate-400">SOURCE</div>
+                        <div class="text-white" id="popup-source">Maxar</div>
+                        
+                        <div class="text-slate-400">SRC_DATE2</div>
+                        <div class="text-white font-mono" id="popup-src-date2">8/14/2024</div>
+                        
+                        <div class="text-slate-400">MaxMapLevel</div>
+                        <div class="text-white font-mono" id="popup-max-map-level">16</div>
+                        
+                        <div class="text-slate-400">MaxMapLevel</div>
+                        <div class="text-white font-mono" id="popup-max-map-level-ent">19</div>
+                        
+                        <div class="text-slate-400">DrawOrder</div>
+                        <div class="text-white font-mono" id="popup-draw-order">6</div>
+                        
+                        <div class="text-slate-400">BlockName</div>
+                        <div class="text-white" id="popup-block-name">Vivid_Advanced_New_York_City_US_24Q1</div>
+                        
+                        <div class="text-slate-400">ReleaseName</div>
+                        <div class="text-white" id="popup-release-name">Maps 2024 H05</div>
+                    </div>
+                    
+                    <div class="border-t border-slate-600 pt-2 mt-3">
+                        <div class="text-slate-400 mb-1">POSITION</div>
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                            <div class="text-slate-400">LAT</div>
+                            <div class="text-white font-mono" id="popup-latitude">40.7128</div>
+                            
+                            <div class="text-slate-400">LON</div>
+                            <div class="text-white font-mono" id="popup-longitude">-74.0060</div>
+                            
+                            <div class="text-slate-400">ALT</div>
+                            <div class="text-white font-mono" id="popup-altitude">10000 ft</div>
+                            
+                            <div class="text-slate-400">HDG</div>
+                            <div class="text-white font-mono" id="popup-heading">090°</div>
+                            
+                            <div class="text-slate-400">SPD</div>
+                            <div class="text-white font-mono" id="popup-speed">250 kts</div>
+                            
+                            <div class="text-slate-400">STATUS</div>
+                            <div class="text-green-400" id="popup-status">Active</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <!-- Active Tracks Panel -->

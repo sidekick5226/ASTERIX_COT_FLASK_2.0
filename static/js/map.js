@@ -256,35 +256,18 @@ class MapManager {
         const normalizedSpeed = Math.max(0, Math.min(1, (speed - speedRange.min) / (speedRange.max - speedRange.min)));
         const arrowLength = minArrowLength + (normalizedSpeed * (maxArrowLength - minArrowLength));
         
-        // Calculate arrow positioning - tail connects directly to icon edge
-        const iconRadius = 12; // Smaller radius to connect directly to icon edge
-        
-        // Use 360 - heading for correct positioning around icon border
-        const correctedHeading = 360 - heading;
-        const headingRadians = correctedHeading * Math.PI / 180;
-        
-        // Create arrow SVG with larger canvas to accommodate full arrow
-        const svgSize = 120; // Larger SVG canvas
-        const svgCenter = svgSize / 2;
-        
-        // Start point (tail of arrow) directly at icon edge - connected to icon
-        const adjustedTailX = svgCenter + iconRadius * Math.sin(headingRadians);
-        const adjustedTailY = svgCenter - iconRadius * Math.cos(headingRadians);
-        
-        // End point (head of arrow) extending outward from icon
-        const adjustedHeadX = adjustedTailX + arrowLength * Math.sin(headingRadians);
-        const adjustedHeadY = adjustedTailY - arrowLength * Math.cos(headingRadians);
-        
+        // Create arrow SVG
         const arrowSvg = `
-            <svg width="${svgSize}" height="${svgSize}" style="position: absolute; top: -${svgCenter}px; left: -${svgCenter}px; pointer-events: none;">
+            <svg width="60" height="60" style="position: absolute; top: -30px; left: -30px; pointer-events: none;">
                 <defs>
                     <marker id="arrowhead-${track.track_id}" markerWidth="6" markerHeight="4" 
                             refX="6" refY="2" orient="auto" fill="${color}">
                         <polygon points="0 0, 6 2, 0 4" />
                     </marker>
                 </defs>
-                <line x1="${adjustedTailX}" y1="${adjustedTailY}" 
-                      x2="${adjustedHeadX}" y2="${adjustedHeadY}" 
+                <line x1="30" y1="30" 
+                      x2="${30 + arrowLength * Math.sin(heading * Math.PI / 180)}" 
+                      y2="${30 - arrowLength * Math.cos(heading * Math.PI / 180)}" 
                       stroke="${color}" 
                       stroke-width="2" 
                       marker-end="url(#arrowhead-${track.track_id})" />
@@ -300,8 +283,8 @@ class MapManager {
                          <div style="font-size: 10px; font-weight: bold; margin-top: 2px;">${track.track_id}</div>
                      </div>
                    </div>`,
-            iconSize: [svgSize, svgSize],
-            iconAnchor: [svgCenter, svgCenter],
+            iconSize: [60, 60],
+            iconAnchor: [30, 30],
             className: 'custom-track-marker'
         });
         

@@ -162,15 +162,19 @@ def generate_simulated_track_data():
     Track.query.delete()
     
     for i in range(10):
+        # Generate tracks within a reasonable geographical area (Eastern US seaboard region)
+        # This ensures all tracks are visible on the default map view
+        track_type = random.choice(track_types)
+        
         track = Track(
             track_id=f"TRK{1000 + i}",
             callsign=f"CALL{i:03d}",
-            track_type=random.choice(track_types),
-            latitude=40.0 + random.uniform(-80, 80),  # Global spread
-            longitude=-74.0 + random.uniform(-180, 180),  # Global spread
-            altitude=random.uniform(100, 40000) if random.choice(track_types) == 'Aircraft' else None,
+            track_type=track_type,
+            latitude=39.5 + random.uniform(-3, 3),    # NYC/Philadelphia area ±3 degrees
+            longitude=-75.0 + random.uniform(-4, 4),  # Eastern seaboard ±4 degrees  
+            altitude=random.uniform(100, 40000) if track_type == 'Aircraft' else (random.uniform(0, 100) if track_type == 'Vessel' else random.uniform(0, 1000)),
             heading=random.uniform(0, 360),
-            speed=random.uniform(50, 500),
+            speed=random.uniform(150, 600) if track_type == 'Aircraft' else (random.uniform(5, 40) if track_type == 'Vessel' else random.uniform(10, 80)),
             status='Active'
         )
         db.session.add(track)

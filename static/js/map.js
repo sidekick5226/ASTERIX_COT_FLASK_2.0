@@ -256,25 +256,19 @@ class MapManager {
         const normalizedSpeed = Math.max(0, Math.min(1, (speed - speedRange.min) / (speedRange.max - speedRange.min)));
         const arrowLength = minArrowLength + (normalizedSpeed * (maxArrowLength - minArrowLength));
         
-        // Calculate arrow positioning - tail attaches to icon border, arrow extends outward
-        const iconRadius = 18; // Distance from center to icon border
+        // Calculate arrow positioning - tail connects directly to icon edge
+        const iconRadius = 12; // Smaller radius to connect directly to icon edge
         const headingRadians = heading * Math.PI / 180;
-        
-        // Start point (tail of arrow) at icon border
-        const tailX = 30 + iconRadius * Math.sin(headingRadians);
-        const tailY = 30 - iconRadius * Math.cos(headingRadians);
-        
-        // End point (head of arrow) extending outward from icon
-        const headX = tailX + arrowLength * Math.sin(headingRadians);
-        const headY = tailY - arrowLength * Math.cos(headingRadians);
         
         // Create arrow SVG with larger canvas to accommodate full arrow
         const svgSize = 120; // Larger SVG canvas
         const svgCenter = svgSize / 2;
         
-        // Adjust coordinates for larger SVG
+        // Start point (tail of arrow) directly at icon edge - connected to icon
         const adjustedTailX = svgCenter + iconRadius * Math.sin(headingRadians);
         const adjustedTailY = svgCenter - iconRadius * Math.cos(headingRadians);
+        
+        // End point (head of arrow) extending outward from icon
         const adjustedHeadX = adjustedTailX + arrowLength * Math.sin(headingRadians);
         const adjustedHeadY = adjustedTailY - arrowLength * Math.cos(headingRadians);
         

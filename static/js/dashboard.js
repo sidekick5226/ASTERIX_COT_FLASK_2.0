@@ -1,6 +1,7 @@
 // Dashboard functionality
 class SurveillanceDashboard {
     constructor() {
+        console.log('Dashboard constructor called');
         this.tracks = new Map();
         this.events = []; // Historical events for Event Log
         this.monitorEvents = []; // Real-time events for Event Monitor
@@ -12,6 +13,8 @@ class SurveillanceDashboard {
         this.battleGroups = new Map(); // Battle Groups storage
         this.battleGroupCounter = 0; // Counter for naming battle groups
         this.isMultiSelecting = false; // Track if we're in multi-select mode
+        console.log('Dashboard properties initialized');
+        
         this.socket = io({
             timeout: 120000,
             reconnection: true,
@@ -986,5 +989,11 @@ class SurveillanceDashboard {
 
 // Initialize dashboard when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    window.dashboard = new SurveillanceDashboard();
+    console.log('DOM loaded, initializing dashboard...');
+    try {
+        window.dashboard = new SurveillanceDashboard();
+        console.log('Dashboard created successfully:', window.dashboard);
+    } catch (error) {
+        console.error('Error creating dashboard:', error);
+    }
 });

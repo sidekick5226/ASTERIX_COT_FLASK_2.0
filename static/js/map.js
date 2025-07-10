@@ -388,13 +388,20 @@ class MapManager {
     switchTo3D() {
         console.log('Switching to 3D Battle View...');
         this.is3DMode = true;
-        document.getElementById('leaflet-map').style.display = 'none';
-        document.getElementById('cesium-map').style.display = 'block';
+        
+        // Hide Leaflet map and show Cesium map
+        const leafletContainer = document.getElementById('leaflet-map');
+        const cesiumContainer = document.getElementById('cesium-map');
+        
+        if (leafletContainer && cesiumContainer) {
+            leafletContainer.classList.add('hidden');
+            cesiumContainer.classList.remove('hidden');
+        }
         
         // Update map mode display
         const modeDisplay = document.getElementById('map-mode-display');
         if (modeDisplay) {
-            modeDisplay.textContent = '3D Battle Mode';
+            modeDisplay.textContent = '3D Battle';
         }
         
         // Check if Cesium viewer exists
@@ -426,9 +433,17 @@ class MapManager {
     }
     
     switchTo2D() {
+        console.log('Switching to 2D Standard View...');
         this.is3DMode = false;
-        document.getElementById('cesium-map').style.display = 'none';
-        document.getElementById('leaflet-map').style.display = 'block';
+        
+        // Show Leaflet map and hide Cesium map
+        const leafletContainer = document.getElementById('leaflet-map');
+        const cesiumContainer = document.getElementById('cesium-map');
+        
+        if (leafletContainer && cesiumContainer) {
+            leafletContainer.classList.remove('hidden');
+            cesiumContainer.classList.add('hidden');
+        }
         
         // Update map mode display
         const modeDisplay = document.getElementById('map-mode-display');

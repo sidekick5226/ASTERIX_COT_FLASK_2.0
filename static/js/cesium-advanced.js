@@ -322,14 +322,27 @@ class AdvancedCesiumManager {
         const normalizedSpeed = Math.max(0, Math.min(1, (speed - speedRange.min) / (speedRange.max - speedRange.min)));
         const arrowLength = minArrowLength + (normalizedSpeed * (maxArrowLength - minArrowLength));
         
-        // Calculate arrow end position
+        // Calculate arrow start and end positions
         const headingRadians = Cesium.Math.toRadians(heading);
-        const deltaLat = (arrowLength * Math.cos(headingRadians)) / 111111; // degrees
-        const deltaLon = (arrowLength * Math.sin(headingRadians)) / (111111 * Math.cos(Cesium.Math.toRadians(track.latitude)));
+        const iconOffset = 100; // meters from icon center to arrow start
+        
+        // Arrow starts from edge of icon in heading direction
+        const startDeltaLat = (iconOffset * Math.cos(headingRadians)) / 111111;
+        const startDeltaLon = (iconOffset * Math.sin(headingRadians)) / (111111 * Math.cos(Cesium.Math.toRadians(track.latitude)));
+        
+        const startPosition = Cesium.Cartesian3.fromDegrees(
+            track.longitude + startDeltaLon,
+            track.latitude + startDeltaLat,
+            this.getUnitAltitude(track)
+        );
+        
+        // Arrow extends in heading direction
+        const endDeltaLat = (arrowLength * Math.cos(headingRadians)) / 111111;
+        const endDeltaLon = (arrowLength * Math.sin(headingRadians)) / (111111 * Math.cos(Cesium.Math.toRadians(track.latitude)));
         
         const endPosition = Cesium.Cartesian3.fromDegrees(
-            track.longitude + deltaLon,
-            track.latitude + deltaLat,
+            track.longitude + endDeltaLon,
+            track.latitude + endDeltaLat,
             this.getUnitAltitude(track)
         );
         
@@ -347,8 +360,8 @@ class AdvancedCesiumManager {
             id: arrowId,
             name: `${track.track_id}_arrow`,
             polyline: {
-                positions: [position, endPosition],
-                width: 3,
+                positions: [startPosition, endPosition],
+                width: 4,
                 material: arrowColor,
                 clampToGround: false,
                 followSurface: false

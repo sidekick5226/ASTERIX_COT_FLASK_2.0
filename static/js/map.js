@@ -256,20 +256,25 @@ class MapManager {
         const normalizedSpeed = Math.max(0, Math.min(1, (speed - speedRange.min) / (speedRange.max - speedRange.min)));
         const arrowLength = minArrowLength + (normalizedSpeed * (maxArrowLength - minArrowLength));
         
-        // Create arrow SVG
+        // Create arrow SVG - arrow tail starts from icon edge, pointing in heading direction
+        const iconRadius = 15; // Distance from center to edge of icon
+        const startX = 30 + iconRadius * Math.sin(heading * Math.PI / 180);
+        const startY = 30 - iconRadius * Math.cos(heading * Math.PI / 180);
+        const endX = 30 + arrowLength * Math.sin(heading * Math.PI / 180);
+        const endY = 30 - arrowLength * Math.cos(heading * Math.PI / 180);
+        
         const arrowSvg = `
             <svg width="60" height="60" style="position: absolute; top: -30px; left: -30px; pointer-events: none;">
                 <defs>
-                    <marker id="arrowhead-${track.track_id}" markerWidth="6" markerHeight="4" 
-                            refX="6" refY="2" orient="auto" fill="${color}">
-                        <polygon points="0 0, 6 2, 0 4" />
+                    <marker id="arrowhead-${track.track_id}" markerWidth="8" markerHeight="6" 
+                            refX="8" refY="3" orient="auto" fill="${color}">
+                        <polygon points="0 0, 8 3, 0 6" />
                     </marker>
                 </defs>
-                <line x1="30" y1="30" 
-                      x2="${30 + arrowLength * Math.sin(heading * Math.PI / 180)}" 
-                      y2="${30 - arrowLength * Math.cos(heading * Math.PI / 180)}" 
+                <line x1="${startX}" y1="${startY}" 
+                      x2="${endX}" y2="${endY}" 
                       stroke="${color}" 
-                      stroke-width="2" 
+                      stroke-width="3" 
                       marker-end="url(#arrowhead-${track.track_id})" />
             </svg>
         `;

@@ -465,20 +465,27 @@ class SurveillanceDashboard {
             }
             
             // Initialize Advanced Cesium viewer if not already done
-            if (!window.cesiumManager) {
-                window.cesiumManager = new CesiumAdvancedManager('cesium-container');
-            }
-            
-            // Resize Cesium viewer and update tracks
-            if (window.cesiumManager && window.cesiumManager.viewer) {
-                console.log('Switching to 3D Battle View...');
-                console.log('Resizing Cesium viewer and updating tracks...');
-                window.cesiumManager.viewer.resize();
-                
-                // Update tracks in 3D mode
+            if (!window.advancedCesiumManager) {
+                console.log('Initializing Cesium viewer for Battle Mode...');
+                try {
+                    window.advancedCesiumManager = new AdvancedCesiumManager();
+                    
+                    // Wait a moment for Cesium to fully initialize
+                    setTimeout(() => {
+                        if (this.tracks.size > 0) {
+                            const tracksArray = Array.from(this.tracks.values());
+                            window.advancedCesiumManager.updateUnitsFromCoT(tracksArray);
+                            console.log(`Updated 3D Battle View with ${tracksArray.length} tracks`);
+                        }
+                    }, 1000);
+                } catch (error) {
+                    console.error('Failed to initialize Cesium viewer:', error);
+                }
+            } else {
+                // Cesium viewer already exists, just update tracks
                 if (this.tracks.size > 0) {
                     const tracksArray = Array.from(this.tracks.values());
-                    window.cesiumManager.updateUnitsFromCoT(tracksArray);
+                    window.advancedCesiumManager.updateUnitsFromCoT(tracksArray);
                     console.log(`Updated 3D Battle View with ${tracksArray.length} tracks`);
                 }
             }
@@ -542,8 +549,15 @@ class SurveillanceDashboard {
         this.updateTracksDisplay();
         this.updateTrackCounts();
 
-        if (window.mapManager) {
+        // Update both 2D and 3D views
+        if (this.isBattleMode && window.advancedCesiumManager) {
+            // Update 3D Battle View
+            window.advancedCesiumManager.updateUnitsFromCoT(tracks);
+            console.log(`Updating ${tracks.length} tracks in 3D Battle view`);
+        } else if (window.mapManager) {
+            // Update 2D Standard View
             window.mapManager.updateTracks(tracks);
+            console.log(`Updating ${tracks.length} tracks in 2D Standard view`);
         }
     }
 

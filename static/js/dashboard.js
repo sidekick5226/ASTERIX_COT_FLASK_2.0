@@ -464,42 +464,9 @@ class SurveillanceDashboard {
                 container3D.style.width = '100%';
             }
             
-            // Initialize Cesium viewer for battle mode
+            // Initialize Advanced Cesium viewer if not already done
             if (!window.cesiumManager) {
-                if (typeof Cesium !== 'undefined') {
-                    console.log('Initializing Cesium viewer for Battle Mode...');
-                    
-                    try {
-                        // Create basic Cesium viewer with minimal configuration
-                        const viewer = new Cesium.Viewer('cesium-container');
-                        
-                        // Remove unwanted UI elements
-                        viewer.cesiumWidget.creditContainer.style.display = "none";
-                        viewer.baseLayerPicker.destroy();
-                        viewer.geocoder.destroy();
-                        viewer.homeButton.destroy();
-                        viewer.sceneModePicker.destroy();
-                        viewer.navigationHelpButton.destroy();
-                        viewer.animation.destroy();
-                        viewer.timeline.destroy();
-                        viewer.fullscreenButton.destroy();
-                        viewer.vrButton.destroy();
-                        
-                        window.cesiumManager = {
-                            viewer: viewer,
-                            entities: new Map()
-                        };
-                        
-                        // Center the globe immediately
-                        viewer.camera.setView({
-                            destination: Cesium.Cartesian3.fromDegrees(-98.0, 39.0, 15000000)
-                        });
-                        
-                        console.log('Cesium Battle Mode viewer initialized successfully');
-                    } catch (error) {
-                        console.error('Failed to initialize Cesium viewer:', error);
-                    }
-                }
+                window.cesiumManager = new CesiumAdvancedManager('cesium-container');
             }
             
             // Resize Cesium viewer and update tracks
@@ -508,15 +475,10 @@ class SurveillanceDashboard {
                 console.log('Resizing Cesium viewer and updating tracks...');
                 window.cesiumManager.viewer.resize();
                 
-                // Center the view again after resize
-                window.cesiumManager.viewer.camera.setView({
-                    destination: Cesium.Cartesian3.fromDegrees(-98.0, 39.0, 15000000)
-                });
-                
                 // Update tracks in 3D mode
                 if (this.tracks.size > 0) {
                     const tracksArray = Array.from(this.tracks.values());
-                    this.updateCesiumTracks(tracksArray);
+                    window.cesiumManager.updateUnitsFromCoT(tracksArray);
                     console.log(`Updated 3D Battle View with ${tracksArray.length} tracks`);
                 }
             }
@@ -551,66 +513,6 @@ class SurveillanceDashboard {
     }
 
     // Removed toggleAdvanced3DMode - now integrated into toggleBattleMode
-    
-    updateCesiumTracks(tracks) {
-        if (!window.cesiumManager || !window.cesiumManager.viewer) return;
-        
-        const viewer = window.cesiumManager.viewer;
-        const entities = window.cesiumManager.entities;
-        
-        // Clear existing entities
-        viewer.entities.removeAll();
-        entities.clear();
-        
-        tracks.forEach(track => {
-            if (!track.latitude || !track.longitude) return;
-            
-            // Determine altitude based on track type
-            let altitude = 0;
-            if (track.track_type === 'Aircraft' || track.type === 'Aircraft') {
-                altitude = track.altitude || 10000; // Default 10,000 feet for aircraft
-            } else if (track.track_type === 'Vehicle' || track.type === 'Vehicle') {
-                altitude = 100; // 100 feet for vehicles
-            } else if (track.track_type === 'Vessel' || track.type === 'Vessel') {
-                altitude = 0; // Sea level for vessels
-            }
-            
-            // Determine color based on track type
-            let color = Cesium.Color.WHITE;
-            if (track.track_type === 'Aircraft' || track.type === 'Aircraft') {
-                color = Cesium.Color.CYAN;
-            } else if (track.track_type === 'Vehicle' || track.type === 'Vehicle') {
-                color = Cesium.Color.GREEN;
-            } else if (track.track_type === 'Vessel' || track.type === 'Vessel') {
-                color = Cesium.Color.YELLOW;
-            }
-            
-            // Create entity for track
-            const entity = viewer.entities.add({
-                id: track.track_id,
-                position: Cesium.Cartesian3.fromDegrees(track.longitude, track.latitude, altitude),
-                point: {
-                    pixelSize: 8,
-                    color: color,
-                    outlineColor: Cesium.Color.BLACK,
-                    outlineWidth: 2,
-                    heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND
-                },
-                label: {
-                    text: track.callsign || track.track_id,
-                    font: '12pt sans-serif',
-                    fillColor: Cesium.Color.WHITE,
-                    outlineColor: Cesium.Color.BLACK,
-                    outlineWidth: 2,
-                    pixelOffset: new Cesium.Cartesian2(0, -40)
-                }
-            });
-            
-            entities.set(track.track_id, entity);
-        });
-        
-        console.log(`Updated ${tracks.length} tracks in Cesium 3D view`);
-    }
 
     viewTrackDetails(trackId) {
         const track = this.tracks.get(trackId);

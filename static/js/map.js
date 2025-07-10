@@ -245,57 +245,20 @@ class MapManager {
         const icon = this.getTrackIcon(track.type);
         const color = this.getTrackColor(track.type);
         
-        // Calculate arrow properties based on heading and speed
-        const heading = track.heading || 0;
-        const speed = track.speed || 0;
-        
-        // Arrow length based on speed (normalize speed to arrow length 10-40px)
-        const minArrowLength = 15;
-        const maxArrowLength = 45;
-        const speedRange = { min: 5, max: 600 }; // Min/max expected speeds
-        const normalizedSpeed = Math.max(0, Math.min(1, (speed - speedRange.min) / (speedRange.max - speedRange.min)));
-        const arrowLength = minArrowLength + (normalizedSpeed * (maxArrowLength - minArrowLength));
-        
-        // Create arrow SVG - arrow tail starts from icon edge, pointing in heading direction
-        const iconRadius = 15; // Distance from center to edge of icon
-        const startX = 30 + iconRadius * Math.sin(heading * Math.PI / 180);
-        const startY = 30 - iconRadius * Math.cos(heading * Math.PI / 180);
-        const endX = 30 + arrowLength * Math.sin(heading * Math.PI / 180);
-        const endY = 30 - arrowLength * Math.cos(heading * Math.PI / 180);
-        
-        const arrowSvg = `
-            <svg width="60" height="60" style="position: absolute; top: -30px; left: -30px; pointer-events: none;">
-                <defs>
-                    <marker id="arrowhead-${track.track_id}" markerWidth="8" markerHeight="6" 
-                            refX="8" refY="3" orient="auto" fill="${color}">
-                        <polygon points="0 0, 8 3, 0 6" />
-                    </marker>
-                </defs>
-                <line x1="${startX}" y1="${startY}" 
-                      x2="${endX}" y2="${endY}" 
-                      stroke="${color}" 
-                      stroke-width="3" 
-                      marker-end="url(#arrowhead-${track.track_id})" />
-            </svg>
-        `;
-        
-        // Create custom HTML marker with icon and directional arrow
+        // Create custom HTML marker
         const customIcon = L.divIcon({
-            html: `<div style="position: relative;">
-                     ${arrowSvg}
-                     <div style="color: ${color}; font-size: 16px; text-align: center; position: relative; z-index: 10;">
-                         <i class="${icon}"></i>
-                         <div style="font-size: 10px; font-weight: bold; margin-top: 2px;">${track.track_id}</div>
-                     </div>
+            html: `<div style="color: ${color}; font-size: 16px; text-align: center;">
+                     <i class="${icon}"></i>
+                     <div style="font-size: 10px; font-weight: bold; margin-top: 2px;">${track.track_id}</div>
                    </div>`,
-            iconSize: [60, 60],
-            iconAnchor: [30, 30],
+            iconSize: [40, 40],
+            iconAnchor: [20, 20],
             className: 'custom-track-marker'
         });
         
         const marker = L.marker([track.latitude, track.longitude], { 
             icon: customIcon,
-            title: `${track.track_id} - ${track.type} - ${Math.round(heading)}° @ ${Math.round(speed)} kts`
+            title: `${track.track_id} - ${track.type}`
         });
         
         // Add popup with track details

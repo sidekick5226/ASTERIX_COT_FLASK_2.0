@@ -225,9 +225,6 @@ class AdvancedCesiumManager {
             // Update existing entity position
             entity.position = position;
             entity.orientation = this.calculateOrientation(track);
-            
-            // Update directional arrow
-            this.createDirectionalArrow(track, position);
         }
         
         // Update trail
@@ -264,9 +261,6 @@ class AdvancedCesiumManager {
                 unitType: unitType
             }
         };
-        
-        // Add directional arrow entity based on heading and speed
-        this.createDirectionalArrow(track, position);
         
         // Add glTF model if available, otherwise use geometric shape
         if (modelUri && modelUri !== 'data:application/octet-stream;base64,') {
@@ -308,80 +302,6 @@ class AdvancedCesiumManager {
         const entity = this.viewer.entities.add(entityConfig);
         
         return entity;
-    }
-    
-    createDirectionalArrow(track, position) {
-        const arrowId = `arrow_${track.track_id}`;
-        const heading = track.heading || 0;
-        const speed = track.speed || 0;
-        
-        // Calculate arrow length based on speed (1000-5000 meters)
-        const minArrowLength = 1000;
-        const maxArrowLength = 5000;
-        const speedRange = { min: 5, max: 600 };
-        const normalizedSpeed = Math.max(0, Math.min(1, (speed - speedRange.min) / (speedRange.max - speedRange.min)));
-        const arrowLength = minArrowLength + (normalizedSpeed * (maxArrowLength - minArrowLength));
-        
-        // Calculate arrow start and end positions
-        const headingRadians = Cesium.Math.toRadians(heading);
-        const iconOffset = 100; // meters from icon center to arrow start
-        
-        // Arrow starts from edge of icon in heading direction
-        const startDeltaLat = (iconOffset * Math.cos(headingRadians)) / 111111;
-        const startDeltaLon = (iconOffset * Math.sin(headingRadians)) / (111111 * Math.cos(Cesium.Math.toRadians(track.latitude)));
-        
-        const startPosition = Cesium.Cartesian3.fromDegrees(
-            track.longitude + startDeltaLon,
-            track.latitude + startDeltaLat,
-            this.getUnitAltitude(track)
-        );
-        
-        // Arrow extends in heading direction
-        const endDeltaLat = (arrowLength * Math.cos(headingRadians)) / 111111;
-        const endDeltaLon = (arrowLength * Math.sin(headingRadians)) / (111111 * Math.cos(Cesium.Math.toRadians(track.latitude)));
-        
-        const endPosition = Cesium.Cartesian3.fromDegrees(
-            track.longitude + endDeltaLon,
-            track.latitude + endDeltaLat,
-            this.getUnitAltitude(track)
-        );
-        
-        // Get unit color for arrow
-        const arrowColor = this.getUnitColor(track.type || track.track_type);
-        
-        // Remove existing arrow if it exists
-        const existingArrow = this.viewer.entities.getById(arrowId);
-        if (existingArrow) {
-            this.viewer.entities.remove(existingArrow);
-        }
-        
-        // Create arrow entity
-        const arrowEntity = {
-            id: arrowId,
-            name: `${track.track_id}_arrow`,
-            polyline: {
-                positions: [startPosition, endPosition],
-                width: 4,
-                material: arrowColor,
-                clampToGround: false,
-                followSurface: false
-            },
-            // Arrow head using a small cone
-            position: endPosition,
-            cylinder: {
-                length: 200,
-                topRadius: 0,
-                bottomRadius: 100,
-                material: arrowColor,
-                heightReference: Cesium.HeightReference.NONE
-            },
-            orientation: Cesium.Transforms.headingPitchRollQuaternion(
-                endPosition,
-                new Cesium.HeadingPitchRoll(headingRadians, -Cesium.Math.PI_OVER_TWO, 0)
-            )
-        };
-        
-        this.viewer.entities.add(arrowEntity);
     }
     
     createShipIcon(color) {

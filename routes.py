@@ -263,7 +263,7 @@ def update_tracks_realtime():
                     monitor_event = {
                         'track_id': track_dict['track_id'],
                         'event_type': 'Track Update',
-                        'description': f"Track {track_dict['track_id']} - {track_dict['track_type']} at {track_dict['latitude']:.4f}, {track_dict['longitude']:.4f}",
+                        'description': f"Track {track_dict['track_id']} - {track_dict.get('track_type', 'Unknown')} at {track_dict['latitude']:.4f}, {track_dict['longitude']:.4f}",
                         'timestamp': datetime.utcnow().isoformat(),
                         'is_realtime': True
                     }
@@ -271,6 +271,7 @@ def update_tracks_realtime():
                 
                 # Emit real-time events to Event Monitor
                 socketio.emit('monitor_events', monitor_events)
+                print(f"Emitted {len(monitor_events)} monitor events")
             
         except Exception as e:
             print(f"Error updating tracks: {e}")

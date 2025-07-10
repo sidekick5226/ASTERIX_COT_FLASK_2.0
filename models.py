@@ -21,7 +21,8 @@ class Track(db.Model):
             'id': self.id,
             'track_id': self.track_id,
             'callsign': self.callsign,
-            'type': self.track_type,
+            'track_type': self.track_type,  # Keep consistent field name
+            'type': self.track_type,        # Also include 'type' for compatibility
             'latitude': self.latitude,
             'longitude': self.longitude,
             'altitude': self.altitude,

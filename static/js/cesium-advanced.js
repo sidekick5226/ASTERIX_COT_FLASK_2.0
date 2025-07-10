@@ -190,39 +190,9 @@ class AdvancedCesiumManager {
     }
     
     setupCoTWebSocket() {
-        // Setup WebSocket for real-time CoT data
-        if (window.socket) {
-            // Listen for regular track updates
-            window.socket.on('track_update', (tracks) => {
-                this.updateUnitsFromCoT(tracks);
-            });
-            
-            // Listen for CoT-specific updates
-            window.socket.on('cot_update', (cotData) => {
-                console.log('Received CoT update:', cotData.length, 'tracks');
-                this.updateUnitsFromCoT(cotData.map(item => item.track_data));
-            });
-            
-            // Handle CoT batch responses
-            window.socket.on('cot_batch', (data) => {
-                console.log('Received CoT batch:', data.track_count, 'tracks');
-            });
-            
-            // Handle CoT heartbeat
-            window.socket.on('cot_heartbeat', (data) => {
-                console.log('CoT heartbeat received');
-            });
-            
-            // Handle CoT errors
-            window.socket.on('cot_error', (error) => {
-                console.error('CoT error:', error);
-            });
-            
-            // Request initial CoT batch
-            window.socket.emit('request_cot_batch');
-        }
-        
-        console.log('CoT WebSocket connection established');
+        // CoT WebSocket setup - tracks will be managed by dashboard
+        // No direct WebSocket listeners here to avoid conflicts
+        console.log('CoT WebSocket ready for dashboard-managed track updates');
     }
     
     setupClickHandlers() {
@@ -243,13 +213,31 @@ class AdvancedCesiumManager {
     }
     
     updateUnitsFromCoT(tracks) {
+        console.log(`Cesium updateUnitsFromCoT called with ${tracks.length} tracks`);
+        
+        // Keep track of active track IDs for cleanup
+        const activeTrackIds = tracks.map(track => `unit_${track.track_id}`);
+        
         // Update or create unit entities from CoT track data
         tracks.forEach(track => {
+            console.log(`Updating entity unit_${track.track_id} at [${track.longitude}, ${track.latitude}, ${this.getUnitAltitude(track)}]`);
             this.updateUnitEntity(track);
         });
         
         // Remove entities for tracks that no longer exist
-        this.cleanupOldEntities(tracks);
+        this.cleanupOldEntities(activeTrackIds);
+        
+        console.log(`Total entities now: ${this.viewer.entities.values.length}`);
+        console.log('Updated 3D Battle View with', tracks.length, 'tracks');
+        
+        // Set battle mode flag for tracking
+        this.battleModeActive = true;
+        
+        // Zoom to show all entities if there are any
+        if (tracks.length > 0) {
+            this.viewer.zoomTo(this.viewer.entities);
+            console.log('Zoomed to show all entities');
+        }
     }
     
     updateUnitEntity(track) {
@@ -266,10 +254,12 @@ class AdvancedCesiumManager {
             // Create new unit entity
             entity = this.createUnitEntity(track, position);
             this.unitEntities.set(entityId, entity);
+            console.log(`Created new entity: ${entityId}`);
         } else {
             // Update existing entity position
             entity.position = position;
             entity.orientation = this.calculateOrientation(track);
+            console.log(`Updated existing entity: ${entityId}`);
         }
         
         // Update trail
@@ -479,12 +469,13 @@ class AdvancedCesiumManager {
         }
     }
     
-    cleanupOldEntities(activeTracks) {
-        const activeTrackIds = new Set(activeTracks.map(t => `unit_${t.track_id}`));
+    cleanupOldEntities(activeTrackIds) {
+        // activeTrackIds is already an array of entity IDs like ['unit_TRK1000', 'unit_TRK1001', ...]
+        const activeIds = new Set(activeTrackIds);
         const entitiesToRemove = [];
         
         this.unitEntities.forEach((entity, entityId) => {
-            if (!activeTrackIds.has(entityId)) {
+            if (!activeIds.has(entityId)) {
                 entitiesToRemove.push(entityId);
             }
         });

@@ -59,10 +59,10 @@ class AdvancedCesiumManager {
         
         // Set initial tactical view position (North America surveillance zone)
         this.viewer.camera.setView({
-            destination: Cesium.Cartesian3.fromDegrees(-95.0, 39.0, 2000000),
+            destination: Cesium.Cartesian3.fromDegrees(-75.0, 40.0, 1000000),
             orientation: {
                 heading: 0.0,
-                pitch: -Cesium.Math.PI_OVER_SIX,
+                pitch: -Cesium.Math.PI_OVER_FOUR,
                 roll: 0.0
             }
         });
@@ -204,6 +204,18 @@ class AdvancedCesiumManager {
         this.cleanupOldEntities(tracks);
         
         console.log('Total entities now:', this.viewer.entities.values.length);
+        
+        // Auto-zoom to show all tracks if we have any
+        if (tracks.length > 0 && this.viewer.entities.values.length > 0) {
+            setTimeout(() => {
+                try {
+                    this.viewer.zoomTo(this.viewer.entities);
+                    console.log('Zoomed to show all entities');
+                } catch (error) {
+                    console.log('Zoom to entities failed, using fallback view');
+                }
+            }, 500);
+        }
     }
     
     updateUnitEntity(track) {
@@ -266,41 +278,36 @@ class AdvancedCesiumManager {
             }
         };
         
-        // Add glTF model if available, otherwise use geometric shape
-        if (modelUri && modelUri !== 'data:application/octet-stream;base64,') {
-            entityConfig.model = {
-                uri: modelUri,
-                scale: scale,
-                minimumPixelSize: 64,
-                maximumScale: 20000,
-                silhouetteColor: this.getUnitColor(unitType),
-                silhouetteSize: 2
+        // Use bright, visible geometric shapes for all units
+        const unitColor = this.getUnitColor(unitType);
+        
+        if (unitType === 'Aircraft') {
+            entityConfig.point = {
+                pixelSize: 25,
+                color: unitColor,
+                outlineColor: Cesium.Color.WHITE,
+                outlineWidth: 3,
+                heightReference: Cesium.HeightReference.NONE,
+                disableDepthTestDistance: Number.POSITIVE_INFINITY
+            };
+        } else if (unitType === 'Vessel') {
+            entityConfig.point = {
+                pixelSize: 20,
+                color: unitColor,
+                outlineColor: Cesium.Color.WHITE,
+                outlineWidth: 3,
+                heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+                disableDepthTestDistance: Number.POSITIVE_INFINITY
             };
         } else {
-            // Use geometric shapes as fallback
-            const unitColor = this.getUnitColor(unitType);
-            if (unitType === 'Aircraft') {
-                entityConfig.point = {
-                    pixelSize: 20,
-                    color: unitColor,
-                    outlineColor: Cesium.Color.WHITE,
-                    outlineWidth: 2,
-                    heightReference: Cesium.HeightReference.NONE
-                };
-            } else if (unitType === 'Vessel') {
-                entityConfig.billboard = {
-                    image: this.createShipIcon(unitColor),
-                    scale: 1.0,
-                    heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
-                };
-            } else {
-                entityConfig.box = {
-                    dimensions: new Cesium.Cartesian3(100, 100, 50),
-                    material: unitColor,
-                    outline: true,
-                    outlineColor: Cesium.Color.WHITE
-                };
-            }
+            entityConfig.point = {
+                pixelSize: 18,
+                color: unitColor,
+                outlineColor: Cesium.Color.WHITE,
+                outlineWidth: 3,
+                heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
+                disableDepthTestDistance: Number.POSITIVE_INFINITY
+            };
         }
         
         const entity = this.viewer.entities.add(entityConfig);

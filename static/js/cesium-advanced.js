@@ -195,6 +195,13 @@ class AdvancedCesiumManager {
             if (selectedEntity && this.unitEntities.has(selectedEntity.id)) {
                 console.log('Unit selected:', selectedEntity.id);
                 // Entity info box will show automatically - no custom handling needed
+            } else if (!selectedEntity) {
+                // Entity deselected - turn off camera follow
+                if (this.cameraFollowTarget) {
+                    console.log('Track deselected - turning off camera follow');
+                    this.cameraFollowTarget = null;
+                    this.followMode = 'none';
+                }
             }
         });
         
@@ -579,6 +586,9 @@ class AdvancedCesiumManager {
     resetCamera() {
         this.cameraFollowTarget = null;
         this.followMode = 'none';
+        
+        // Clear any selected entity to ensure clean state
+        this.viewer.selectedEntity = undefined;
         
         // Reset to initial tactical view
         this.viewer.camera.setView({

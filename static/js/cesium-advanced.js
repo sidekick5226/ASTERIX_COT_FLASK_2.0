@@ -706,28 +706,28 @@ class AdvancedCesiumManager {
                 </div>
                 
                 <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                    <tr style="border-bottom: 1px solid #e2e8f0;">
-                        <td style="padding: 6px 0; font-weight: bold; color: #475569; width: 35%;">Callsign:</td>
-                        <td style="padding: 6px 0; color: #1e293b; font-family: monospace;">${callsign}</td>
+                    <tr style="border-bottom: 1px solid #475569;">
+                        <td style="padding: 6px 0; font-weight: bold; color: #e2e8f0; width: 35%;">Callsign:</td>
+                        <td style="padding: 6px 0; color: white; font-family: monospace;">${callsign}</td>
                     </tr>
-                    <tr style="border-bottom: 1px solid #e2e8f0;">
-                        <td style="padding: 6px 0; font-weight: bold; color: #475569;">Position:</td>
-                        <td style="padding: 6px 0; color: #1e293b; font-family: monospace;">${lat}, ${lon}</td>
+                    <tr style="border-bottom: 1px solid #475569;">
+                        <td style="padding: 6px 0; font-weight: bold; color: #e2e8f0;">Position:</td>
+                        <td style="padding: 6px 0; color: white; font-family: monospace;">${lat}, ${lon}</td>
                     </tr>
-                    <tr style="border-bottom: 1px solid #e2e8f0;">
-                        <td style="padding: 6px 0; font-weight: bold; color: #475569;">Altitude:</td>
-                        <td style="padding: 6px 0; color: #1e293b; font-family: monospace;">${alt}</td>
+                    <tr style="border-bottom: 1px solid #475569;">
+                        <td style="padding: 6px 0; font-weight: bold; color: #e2e8f0;">Altitude:</td>
+                        <td style="padding: 6px 0; color: white; font-family: monospace;">${alt}</td>
                     </tr>
-                    <tr style="border-bottom: 1px solid #e2e8f0;">
-                        <td style="padding: 6px 0; font-weight: bold; color: #475569;">Heading:</td>
-                        <td style="padding: 6px 0; color: #1e293b; font-family: monospace;">${heading}</td>
+                    <tr style="border-bottom: 1px solid #475569;">
+                        <td style="padding: 6px 0; font-weight: bold; color: #e2e8f0;">Heading:</td>
+                        <td style="padding: 6px 0; color: white; font-family: monospace;">${heading}</td>
                     </tr>
-                    <tr style="border-bottom: 1px solid #e2e8f0;">
-                        <td style="padding: 6px 0; font-weight: bold; color: #475569;">Speed:</td>
-                        <td style="padding: 6px 0; color: #1e293b; font-family: monospace;">${speed}</td>
+                    <tr style="border-bottom: 1px solid #475569;">
+                        <td style="padding: 6px 0; font-weight: bold; color: #e2e8f0;">Speed:</td>
+                        <td style="padding: 6px 0; color: white; font-family: monospace;">${speed}</td>
                     </tr>
-                    <tr style="border-bottom: 1px solid #e2e8f0;">
-                        <td style="padding: 6px 0; font-weight: bold; color: #475569;">Status:</td>
+                    <tr style="border-bottom: 1px solid #475569;">
+                        <td style="padding: 6px 0; font-weight: bold; color: #e2e8f0;">Status:</td>
                         <td style="padding: 6px 0;">
                             <span style="background: ${status === 'Active' ? '#10b981' : '#ef4444'}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">
                                 ${status}
@@ -735,12 +735,12 @@ class AdvancedCesiumManager {
                         </td>
                     </tr>
                     <tr>
-                        <td style="padding: 6px 0; font-weight: bold; color: #475569;">Last Update:</td>
-                        <td style="padding: 6px 0; color: #64748b; font-size: 11px;">${lastUpdate}</td>
+                        <td style="padding: 6px 0; font-weight: bold; color: #e2e8f0;">Last Update:</td>
+                        <td style="padding: 6px 0; color: #cbd5e1; font-size: 11px;">${lastUpdate}</td>
                     </tr>
                 </table>
                 
-                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 11px; color: #64748b; text-align: center;">
+                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #475569; font-size: 11px; color: #cbd5e1; text-align: center;">
                     Double-click to follow • Right-click for actions
                 </div>
             </div>

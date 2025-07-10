@@ -447,10 +447,10 @@ class SurveillanceDashboard {
             btn.innerHTML = '<i class="fas fa-globe"></i> Standard View';
             btn.classList.add('active');
             
-            // Hide active tracks table in battle mode
-            const tracksTable = document.querySelector('#active-tracks .bg-slate-700');
-            if (tracksTable) {
-                tracksTable.style.display = 'none';
+            // Hide active tracks panel in battle mode
+            const tracksPanel = document.getElementById('active-tracks-panel');
+            if (tracksPanel) {
+                tracksPanel.style.display = 'none';
             }
             
             // Hide 2D map and show 3D container
@@ -490,10 +490,10 @@ class SurveillanceDashboard {
             btn.innerHTML = '<i class="fas fa-fighter-jet"></i> Battle View';
             btn.classList.remove('active');
             
-            // Show active tracks table again
-            const tracksTable = document.querySelector('#active-tracks .bg-slate-700');
-            if (tracksTable) {
-                tracksTable.style.display = 'block';
+            // Show active tracks panel again
+            const tracksPanel = document.getElementById('active-tracks-panel');
+            if (tracksPanel) {
+                tracksPanel.style.display = 'block';
             }
             
             // Show 2D map and hide 3D container

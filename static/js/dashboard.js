@@ -466,7 +466,15 @@ class SurveillanceDashboard {
             
             // Initialize Advanced Cesium viewer if not already done
             if (!window.cesiumManager) {
-                window.cesiumManager = new CesiumAdvancedManager('cesium-container');
+                try {
+                    console.log('Initializing Cesium viewer for Battle Mode...');
+                    window.cesiumManager = new AdvancedCesiumManager();
+                    console.log('Cesium manager initialized successfully');
+                } catch (error) {
+                    console.error('Failed to initialize Cesium manager:', error);
+                    this.showNotification('3D Battle Mode initialization failed', 'error');
+                    return;
+                }
             }
             
             // Resize Cesium viewer and update tracks
@@ -542,8 +550,20 @@ class SurveillanceDashboard {
         this.updateTracksDisplay();
         this.updateTrackCounts();
 
-        if (window.mapManager) {
+        // Update 2D map if in standard mode
+        if (!this.isBattleMode && window.mapManager) {
             window.mapManager.updateTracks(tracks);
+            console.log(`Updating ${tracks.length} tracks in 2D Standard view`);
+        }
+        
+        // Update 3D map if in battle mode
+        if (this.isBattleMode && window.cesiumManager) {
+            try {
+                window.cesiumManager.updateUnitsFromCoT(tracks);
+                console.log(`Updating ${tracks.length} tracks in 3D Battle view`);
+            } catch (error) {
+                console.error('Error updating tracks in 3D mode:', error);
+            }
         }
     }
 

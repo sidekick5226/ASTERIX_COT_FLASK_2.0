@@ -27,7 +27,7 @@ class AdvancedCesiumManager {
     
     setupCesiumViewer() {
         // Initialize Cesium with advanced configuration
-        this.viewer = new Cesium.Viewer('cesium-map', {
+        this.viewer = new Cesium.Viewer('cesium-container', {
             baseLayerPicker: false,
             geocoder: false,
             homeButton: false,

@@ -611,16 +611,67 @@ class AdvancedCesiumManager {
     updateTracks(tracks) {
         if (!this.viewer || !tracks) return;
         
-        // Clear existing entities
-        this.viewer.entities.removeAll();
-        this.unitEntities.clear();
+        // Efficiently update existing entities instead of clearing all
+        const activeTrackIds = new Set();
         
-        // Add tracks as entities
+        // Update or create tracks
         tracks.forEach(track => {
-            this.addTrackEntity(track);
+            const trackId = track.track_id || track.id;
+            activeTrackIds.add(trackId);
+            
+            if (this.unitEntities.has(trackId)) {
+                // Update existing entity
+                this.updateTrackEntity(trackId, track);
+            } else {
+                // Create new entity
+                this.addTrackEntity(track);
+            }
         });
         
-        console.log(`Advanced Cesium updated with ${tracks.length} tracks`);
+        // Remove entities for tracks that no longer exist
+        this.unitEntities.forEach((entity, trackId) => {
+            if (!activeTrackIds.has(trackId)) {
+                this.viewer.entities.remove(entity);
+                this.unitEntities.delete(trackId);
+            }
+        });
+        
+        // Force a render to ensure immediate display update
+        this.viewer.scene.requestRender();
+    }
+    
+    updateTrackEntity(trackId, track) {
+        const entity = this.unitEntities.get(trackId);
+        if (!entity) return;
+        
+        // Use reasonable altitude defaults for 3D view
+        let altitude = 0;
+        if (track.altitude && track.altitude > 0 && track.altitude < 100000) {
+            altitude = track.altitude;
+        } else {
+            const trackType = track.track_type || track.type;
+            if (trackType === 'Aircraft') {
+                altitude = 10000; // 10,000 feet for aircraft
+            } else if (trackType === 'Vessel') {
+                altitude = 0; // Sea level for vessels
+            } else if (trackType === 'Vehicle') {
+                altitude = 100; // 100 feet for ground vehicles
+            }
+        }
+        
+        // Update position
+        entity.position = Cesium.Cartesian3.fromDegrees(
+            track.longitude, 
+            track.latitude, 
+            altitude
+        );
+        
+        // Update label
+        entity.label.text = track.callsign || trackId;
+        
+        // Update color if track type changed
+        const newColor = this.getTrackColor(track.track_type || track.type);
+        entity.point.color = newColor;
     }
     
     addTrackEntity(track) {

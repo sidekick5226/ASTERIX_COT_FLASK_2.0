@@ -192,12 +192,18 @@ class MapManager {
         console.log(`Updating ${tracks.length} tracks in ${this.is3DMode ? '3D Battle' : '2D Standard'} view`);
         this.tracks = tracks;
         
-        // Always update both views to keep them synchronized
-        if (this.leafletMap) {
+        // Update 2D map when in 2D mode or always keep it synchronized
+        if (!this.is3DMode && this.leafletMap) {
             this.updateLeafletTracks(tracks);
         }
         
-        if (this.cesiumViewer) {
+        // Update 3D map when in 3D mode using Advanced Cesium Manager
+        if (this.is3DMode && window.advancedCesium && window.advancedCesium.viewer) {
+            window.advancedCesium.updateTracks(tracks);
+        }
+        
+        // Also update basic Cesium viewer if it exists (fallback)
+        if (this.cesiumViewer && !this.is3DMode) {
             this.updateCesiumTracks(tracks);
         }
     }

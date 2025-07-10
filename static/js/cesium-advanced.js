@@ -59,10 +59,10 @@ class AdvancedCesiumManager {
         
         // Set initial tactical view position (North America surveillance zone)
         this.viewer.camera.setView({
-            destination: Cesium.Cartesian3.fromDegrees(-75.0, 40.0, 1000000),
+            destination: Cesium.Cartesian3.fromDegrees(-95.0, 39.0, 2000000),
             orientation: {
                 heading: 0.0,
-                pitch: -Cesium.Math.PI_OVER_FOUR,
+                pitch: -Cesium.Math.PI_OVER_SIX,
                 roll: 0.0
             }
         });
@@ -193,8 +193,6 @@ class AdvancedCesiumManager {
     }
     
     updateUnitsFromCoT(tracks) {
-        console.log('Cesium updateUnitsFromCoT called with', tracks.length, 'tracks');
-        
         // Update or create unit entities from CoT track data
         tracks.forEach(track => {
             this.updateUnitEntity(track);
@@ -202,50 +200,26 @@ class AdvancedCesiumManager {
         
         // Remove entities for tracks that no longer exist
         this.cleanupOldEntities(tracks);
-        
-        console.log('Total entities now:', this.viewer.entities.values.length);
-        
-        // Auto-zoom to show all tracks if we have any
-        if (tracks.length > 0 && this.viewer.entities.values.length > 0) {
-            setTimeout(() => {
-                try {
-                    this.viewer.zoomTo(this.viewer.entities, new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-45), 0));
-                    console.log('Zoomed to show all entities');
-                } catch (error) {
-                    console.log('Zoom to entities failed, using fallback view');
-                    // Fallback: fly to North America surveillance area
-                    this.viewer.camera.flyTo({
-                        destination: Cesium.Cartesian3.fromDegrees(-75.0, 40.0, 5000000),
-                        duration: 2.0
-                    });
-                }
-            }, 1000);
-        }
     }
     
     updateUnitEntity(track) {
         const entityId = `unit_${track.track_id}`;
         let entity = this.viewer.entities.getById(entityId);
         
-        const altitude = this.getUnitAltitude(track);
         const position = Cesium.Cartesian3.fromDegrees(
             track.longitude, 
             track.latitude, 
-            altitude
+            this.getUnitAltitude(track)
         );
-        
-        console.log(`Updating entity ${entityId} at [${track.longitude}, ${track.latitude}, ${altitude}]`);
         
         if (!entity) {
             // Create new unit entity
             entity = this.createUnitEntity(track, position);
             this.unitEntities.set(entityId, entity);
-            console.log(`Created new entity: ${entityId}`);
         } else {
             // Update existing entity position
             entity.position = position;
             entity.orientation = this.calculateOrientation(track);
-            console.log(`Updated existing entity: ${entityId}`);
         }
         
         // Update trail
@@ -283,19 +257,42 @@ class AdvancedCesiumManager {
             }
         };
         
-        // Use bright, visible geometric shapes for all units
-        const unitColor = this.getUnitColor(unitType);
-        
-        // Use consistent point styling for maximum visibility
-        entityConfig.point = {
-            pixelSize: unitType === 'Aircraft' ? 30 : unitType === 'Vessel' ? 25 : 20,
-            color: unitColor,
-            outlineColor: Cesium.Color.WHITE,
-            outlineWidth: 4,
-            heightReference: unitType === 'Vessel' ? Cesium.HeightReference.CLAMP_TO_GROUND : Cesium.HeightReference.NONE,
-            disableDepthTestDistance: Number.POSITIVE_INFINITY,
-            scaleByDistance: new Cesium.NearFarScalar(1.5e2, 2.0, 1.5e7, 0.5)
-        };
+        // Add glTF model if available, otherwise use geometric shape
+        if (modelUri && modelUri !== 'data:application/octet-stream;base64,') {
+            entityConfig.model = {
+                uri: modelUri,
+                scale: scale,
+                minimumPixelSize: 64,
+                maximumScale: 20000,
+                silhouetteColor: this.getUnitColor(unitType),
+                silhouetteSize: 2
+            };
+        } else {
+            // Use geometric shapes as fallback
+            const unitColor = this.getUnitColor(unitType);
+            if (unitType === 'Aircraft') {
+                entityConfig.point = {
+                    pixelSize: 20,
+                    color: unitColor,
+                    outlineColor: Cesium.Color.WHITE,
+                    outlineWidth: 2,
+                    heightReference: Cesium.HeightReference.NONE
+                };
+            } else if (unitType === 'Vessel') {
+                entityConfig.billboard = {
+                    image: this.createShipIcon(unitColor),
+                    scale: 1.0,
+                    heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
+                };
+            } else {
+                entityConfig.box = {
+                    dimensions: new Cesium.Cartesian3(100, 100, 50),
+                    material: unitColor,
+                    outline: true,
+                    outlineColor: Cesium.Color.WHITE
+                };
+            }
+        }
         
         const entity = this.viewer.entities.add(entityConfig);
         

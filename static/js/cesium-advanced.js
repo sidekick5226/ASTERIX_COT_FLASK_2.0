@@ -672,6 +672,79 @@ class AdvancedCesiumManager {
         // Update color if track type changed
         const newColor = this.getTrackColor(track.track_type || track.type);
         entity.point.color = newColor;
+        
+        // Update description with latest track information
+        entity.description = this.createTrackDescription(track, altitude);
+        
+        // Update stored track data
+        if (entity.properties) {
+            entity.properties.trackData = track;
+            entity.properties.lastUpdated = new Date().toISOString();
+        }
+    }
+    
+    createTrackDescription(track, altitude) {
+        const trackId = track.track_id || track.id;
+        const callsign = track.callsign || 'N/A';
+        const trackType = track.track_type || track.type || 'Unknown';
+        const status = track.status || 'Unknown';
+        const heading = track.heading ? track.heading.toFixed(1) + '°' : 'N/A';
+        const speed = track.speed ? track.speed.toFixed(1) + ' kts' : 'N/A';
+        const lat = track.latitude ? track.latitude.toFixed(6) : 'N/A';
+        const lon = track.longitude ? track.longitude.toFixed(6) : 'N/A';
+        const alt = altitude ? altitude.toFixed(0) + ' ft' : 'N/A';
+        const lastUpdate = track.last_updated ? new Date(track.last_updated).toLocaleString() : 'N/A';
+        
+        return `
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 13px; line-height: 1.4; min-width: 280px;">
+                <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: white; padding: 12px; margin: -8px -8px 8px -8px; border-radius: 4px 4px 0 0;">
+                    <h3 style="margin: 0; font-size: 16px; font-weight: bold; display: flex; align-items: center;">
+                        <span style="background: #3b82f6; padding: 2px 8px; border-radius: 3px; margin-right: 8px; font-size: 12px;">${trackId}</span>
+                        ${callsign}
+                    </h3>
+                    <div style="font-size: 11px; opacity: 0.8; margin-top: 4px;">${trackType} • ${status}</div>
+                </div>
+                
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 6px 0; font-weight: bold; color: #475569; width: 35%;">Callsign:</td>
+                        <td style="padding: 6px 0; color: #1e293b; font-family: monospace;">${callsign}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 6px 0; font-weight: bold; color: #475569;">Position:</td>
+                        <td style="padding: 6px 0; color: #1e293b; font-family: monospace;">${lat}, ${lon}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 6px 0; font-weight: bold; color: #475569;">Altitude:</td>
+                        <td style="padding: 6px 0; color: #1e293b; font-family: monospace;">${alt}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 6px 0; font-weight: bold; color: #475569;">Heading:</td>
+                        <td style="padding: 6px 0; color: #1e293b; font-family: monospace;">${heading}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 6px 0; font-weight: bold; color: #475569;">Speed:</td>
+                        <td style="padding: 6px 0; color: #1e293b; font-family: monospace;">${speed}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 6px 0; font-weight: bold; color: #475569;">Status:</td>
+                        <td style="padding: 6px 0;">
+                            <span style="background: ${status === 'Active' ? '#10b981' : '#ef4444'}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">
+                                ${status}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; font-weight: bold; color: #475569;">Last Update:</td>
+                        <td style="padding: 6px 0; color: #64748b; font-size: 11px;">${lastUpdate}</td>
+                    </tr>
+                </table>
+                
+                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 11px; color: #64748b; text-align: center;">
+                    Double-click to follow • Right-click for actions
+                </div>
+            </div>
+        `;
     }
     
     addTrackEntity(track) {
@@ -701,8 +774,13 @@ class AdvancedCesiumManager {
         
         const color = this.getTrackColor(track.track_type || track.type);
         
+        // Create detailed description for track information popup
+        const trackDescription = this.createTrackDescription(track, altitude);
+        
         const entity = this.viewer.entities.add({
             id: trackId,
+            name: trackId,
+            description: trackDescription,
             position: position,
             point: {
                 pixelSize: 12,
@@ -720,7 +798,12 @@ class AdvancedCesiumManager {
                 style: Cesium.LabelStyle.FILL_AND_OUTLINE,
                 pixelOffset: new Cesium.Cartesian2(0, -40),
                 horizontalOrigin: Cesium.HorizontalOrigin.CENTER
-            }
+            },
+            // Store track data for access during selection
+            properties: new Cesium.PropertyBag({
+                trackData: track,
+                lastUpdated: new Date().toISOString()
+            })
         });
         
         this.unitEntities.set(trackId, entity);

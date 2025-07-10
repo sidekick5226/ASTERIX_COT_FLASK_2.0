@@ -827,7 +827,7 @@ class AdvancedCesiumManager {
         switch (trackType) {
             case 'Aircraft': return Cesium.Color.CYAN;
             case 'Vessel': return Cesium.Color.BLUE;
-            case 'Vehicle': return Cesium.Color.GREEN;
+            case 'Vehicle': return Cesium.Color.fromCssColorString('#f59e0b');
             default: return Cesium.Color.YELLOW;
         }
     }

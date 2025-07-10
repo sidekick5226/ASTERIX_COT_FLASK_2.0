@@ -42,8 +42,6 @@ class SurveillanceDashboard {
             if (stopBtn) stopBtn.addEventListener('click', () => this.stopLiveDemo());
             if (battleBtn) {
                 battleBtn.addEventListener('click', () => this.toggleBattleMode());
-                // Add advanced 3D mode with double-click
-                battleBtn.addEventListener('dblclick', () => this.toggleAdvanced3DMode());
             }
 
             // Filters
@@ -505,7 +503,12 @@ class SurveillanceDashboard {
             if (!window.cesiumManager) {
                 try {
                     console.log('Initializing Cesium viewer for Battle Mode...');
-                    window.cesiumManager = new AdvancedCesiumManager();
+                    // Use the existing global cesium manager or create new one
+                    if (window.advancedCesium) {
+                        window.cesiumManager = window.advancedCesium;
+                    } else {
+                        window.cesiumManager = new AdvancedCesiumManager();
+                    }
                     console.log('Cesium manager initialized successfully');
                 } catch (error) {
                     console.error('Failed to initialize Cesium manager:', error);

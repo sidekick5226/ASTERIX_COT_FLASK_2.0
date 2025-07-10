@@ -27,7 +27,13 @@ class AdvancedCesiumManager {
     
     setupCesiumViewer() {
         // Initialize Cesium with advanced configuration
-        this.viewer = new Cesium.Viewer('cesium-container', {
+        const container = document.getElementById('cesium-container') || document.getElementById('cesium-map');
+        if (!container) {
+            console.error('Cesium container not found');
+            return;
+        }
+        
+        this.viewer = new Cesium.Viewer(container, {
             baseLayerPicker: false,
             geocoder: false,
             homeButton: false,
@@ -644,5 +650,35 @@ class AdvancedCesiumManager {
     }
 }
 
-// Global instance
-window.advancedCesium = new AdvancedCesiumManager();
+// Initialize when DOM is loaded - only if not already initialized
+if (!window.advancedCesium) {
+    document.addEventListener('DOMContentLoaded', function() {
+        if (!window.advancedCesium) {
+            try {
+                // Only initialize if cesium container exists
+                const container = document.getElementById('cesium-container') || document.getElementById('cesium-map');
+                if (container) {
+                    window.advancedCesium = new AdvancedCesiumManager();
+                    console.log('Advanced Cesium Manager initialized');
+                } else {
+                    console.log('Cesium container not found, waiting for Battle Mode activation');
+                }
+            } catch (error) {
+                console.error('Error initializing Advanced Cesium Manager:', error);
+            }
+        }
+    });
+    
+    // Also try to initialize if DOM is already loaded
+    if (document.readyState !== 'loading' && !window.advancedCesium) {
+        try {
+            const container = document.getElementById('cesium-container') || document.getElementById('cesium-map');
+            if (container) {
+                window.advancedCesium = new AdvancedCesiumManager();
+                console.log('Advanced Cesium Manager initialized (DOM already loaded)');
+            }
+        } catch (error) {
+            console.error('Error initializing Advanced Cesium Manager:', error);
+        }
+    }
+}

@@ -41,7 +41,14 @@ class SurveillanceDashboard {
             if (startBtn) startBtn.addEventListener('click', () => this.startLiveDemo());
             if (stopBtn) stopBtn.addEventListener('click', () => this.stopLiveDemo());
             if (battleBtn) {
-                battleBtn.addEventListener('click', () => this.toggleBattleMode());
+                console.log('Battle button found, adding click listener');
+                battleBtn.addEventListener('click', (e) => {
+                    console.log('Battle button clicked!');
+                    e.preventDefault();
+                    this.toggleBattleMode();
+                });
+            } else {
+                console.error('Battle button not found!');
             }
 
             // Filters
@@ -474,8 +481,10 @@ class SurveillanceDashboard {
     }
 
     toggleBattleMode() {
+        console.log('toggleBattleMode called, current mode:', this.isBattleMode);
         this.isBattleMode = !this.isBattleMode;
         const btn = document.getElementById('battle-mode-btn');
+        console.log('Battle mode now:', this.isBattleMode, 'Button:', btn);
         
         if (this.isBattleMode) {
             // Activate Advanced 3D Battle Mode

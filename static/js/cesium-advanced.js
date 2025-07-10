@@ -190,27 +190,19 @@ class AdvancedCesiumManager {
     }
 
     setupClickHandlers() {
-        // Handle entity selection for follow camera
-        this.viewer.selectedEntityChanged.addEventListener((selectedEntity) => {
-            if (selectedEntity && this.unitEntities.has(selectedEntity.id)) {
-                this.selectUnit(selectedEntity);
-            }
-        });
-
-        // Double-click to follow track (no popup in Battle View)
+        // Double-click to follow track with camera
         this.viewer.cesiumWidget.canvas.addEventListener('dblclick', (event) => {
             const pickedEntity = this.viewer.scene.pick(event);
             if (pickedEntity && pickedEntity.id && this.unitEntities.has(pickedEntity.id.id)) {
-                this.startFollowCamera(pickedEntity.id);
+                this.showFollowCameraOption(pickedEntity.id);
             }
         });
 
-        // Single click handler for track selection without popup
-        this.viewer.cesiumWidget.canvas.addEventListener('click', (event) => {
-            const pickedEntity = this.viewer.scene.pick(event);
-            if (pickedEntity && pickedEntity.id && this.unitEntities.has(pickedEntity.id.id)) {
-                // Just select the entity, don't show popup
-                this.viewer.selectedEntity = pickedEntity.id;
+        // Single-click only selects entity, does not trigger camera follow
+        this.viewer.selectedEntityChanged.addEventListener((selectedEntity) => {
+            if (selectedEntity && this.unitEntities.has(selectedEntity.id)) {
+                // Just highlight the selected unit, don't start camera follow
+                this.highlightUnit(selectedEntity);
             }
         });
     }
@@ -479,17 +471,20 @@ class AdvancedCesiumManager {
         });
     }
 
-    selectUnit(entity) {
-        console.log('Unit selected:', entity.name);
+    highlightUnit(entity) {
+        console.log('Unit highlighted:', entity.name);
 
-        // Highlight selected unit
+        // Highlight selected unit without triggering camera follow
         if (entity.model) {
             entity.model.silhouetteSize = 4;
             entity.model.silhouetteColor = Cesium.Color.YELLOW;
         }
 
-        // Show follow camera option
-        this.showFollowCameraOption(entity);
+        // Add subtle visual feedback for selection
+        if (entity.point) {
+            entity.point.outlineWidth = 3;
+            entity.point.outlineColor = Cesium.Color.YELLOW;
+        }
     }
 
     showFollowCameraOption(entity) {

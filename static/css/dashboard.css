@@ -169,8 +169,14 @@ body {
 }
 
 #battle-mode-btn.active {
-    background-color: #7c3aed;
-    border-color: #7c3aed;
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+#advanced-3d-btn.active {
+    background-color: #6f42c1;
+    border-color: #6f42c1;
+    color: white;
 }
 
 /* Map container */
@@ -333,22 +339,22 @@ body {
         height: auto;
         position: relative;
     }
-    
+
     .main-content {
         margin-left: 0;
     }
-    
+
     .dashboard-header {
         flex-direction: column;
         gap: 15px;
         align-items: flex-start;
     }
-    
+
     .dashboard-controls {
         width: 100%;
         justify-content: flex-start;
     }
-    
+
     .track-legend {
         position: relative;
         top: auto;

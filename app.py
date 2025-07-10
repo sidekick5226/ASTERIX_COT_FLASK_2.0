@@ -28,7 +28,7 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 
 # Initialize extensions
 db.init_app(app)
-socketio = SocketIO(app, cors_allowed_origins="*", logger=False, engineio_logger=False, ping_timeout=120, ping_interval=30, async_mode='threading')
+socketio = SocketIO(app, cors_allowed_origins="*", logger=False, engineio_logger=False, ping_timeout=180, ping_interval=60, async_mode='threading', transports=['polling', 'websocket'])
 
 with app.app_context():
     # Import models to ensure tables are created

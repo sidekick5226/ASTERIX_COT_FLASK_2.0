@@ -8,7 +8,13 @@ class SurveillanceDashboard {
         this.isLiveDemo = false;
         this.isBattleMode = false;
         this.updateInterval = null;
-        this.socket = io(); // Initialize Socket.IO connection
+        this.socket = io({
+            timeout: 120000,
+            reconnection: true,
+            reconnectionDelay: 2000,
+            reconnectionAttempts: 5,
+            transports: ['polling', 'websocket']
+        }); // Initialize Socket.IO connection
         
         this.setupSocketHandlers();
         this.init();

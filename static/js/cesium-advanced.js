@@ -57,12 +57,12 @@ class AdvancedCesiumManager {
         this.viewer.scene.fog.enabled = false;
         this.viewer.scene.skyBox.show = true;
         
-        // Set initial tactical view position (North America surveillance zone)
+        // Set initial global surveillance view - better perspective for Battle Mode
         this.viewer.camera.setView({
-            destination: Cesium.Cartesian3.fromDegrees(-95.0, 39.0, 2000000),
+            destination: Cesium.Cartesian3.fromDegrees(0.0, 30.0, 12000000),
             orientation: {
                 heading: 0.0,
-                pitch: -Cesium.Math.PI_OVER_SIX,
+                pitch: -Cesium.Math.PI_OVER_FOUR,
                 roll: 0.0
             }
         });
@@ -817,6 +817,40 @@ class AdvancedCesiumManager {
             case 'Vehicle': return Cesium.Color.GREEN;
             default: return Cesium.Color.YELLOW;
         }
+    }
+    
+    show() {
+        const cesiumContainer = document.getElementById('cesium-map');
+        if (cesiumContainer) {
+            cesiumContainer.classList.remove('hidden');
+            
+            // Force a render when showing and reset to optimal view
+            if (this.viewer) {
+                this.viewer.resize();
+                this.resetToOptimalView();
+                this.viewer.scene.requestRender();
+            }
+        }
+    }
+    
+    hide() {
+        const cesiumContainer = document.getElementById('cesium-map');
+        if (cesiumContainer) {
+            cesiumContainer.classList.add('hidden');
+        }
+    }
+    
+    resetToOptimalView() {
+        // Reset camera to optimal global surveillance view when entering Battle Mode
+        this.viewer.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(0.0, 30.0, 12000000),
+            orientation: {
+                heading: 0.0,
+                pitch: -Cesium.Math.PI_OVER_FOUR,
+                roll: 0.0
+            },
+            duration: 2.0
+        });
     }
 }
 

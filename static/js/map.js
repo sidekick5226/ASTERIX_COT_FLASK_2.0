@@ -425,11 +425,11 @@ class MapManager {
         // Use the Advanced Cesium Manager instead
         if (window.advancedCesium && window.advancedCesium.viewer) {
             console.log('Activating Advanced Cesium 3D Battle View...');
+            // Call show() method to trigger optimal view reset
+            window.advancedCesium.show();
+            
             setTimeout(() => {
                 try {
-                    window.advancedCesium.viewer.resize();
-                    window.advancedCesium.viewer.scene.requestRender();
-                    
                     // Update tracks using advanced Cesium
                     if (this.tracks && this.tracks.length > 0) {
                         window.advancedCesium.updateTracks(this.tracks);

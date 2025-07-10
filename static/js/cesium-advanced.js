@@ -190,44 +190,19 @@ class AdvancedCesiumManager {
     }
 
     setupClickHandlers() {
-        // Handle entity selection and highlighting
+        // Double-click to follow track with camera
+        this.viewer.cesiumWidget.canvas.addEventListener('dblclick', (event) => {
+            const pickedEntity = this.viewer.scene.pick(event);
+            if (pickedEntity && pickedEntity.id && this.unitEntities.has(pickedEntity.id.id)) {
+                this.showFollowCameraOption(pickedEntity.id);
+            }
+        });
+
+        // Single-click only selects entity, does not trigger camera follow
         this.viewer.selectedEntityChanged.addEventListener((selectedEntity) => {
-            // Clear previous highlighting
-            this.clearAllHighlights();
-            
             if (selectedEntity && this.unitEntities.has(selectedEntity.id)) {
                 // Just highlight the selected unit, don't start camera follow
                 this.highlightUnit(selectedEntity);
-            }
-        });
-
-        // Single-click handler for selection and deselection
-        this.viewer.cesiumWidget.canvas.addEventListener('click', (event) => {
-            const pickedObject = this.viewer.scene.pick(event);
-            if (pickedObject && pickedObject.id) {
-                const entityId = pickedObject.id.id || pickedObject.id;
-                if (this.unitEntities.has(entityId)) {
-                    // Select the entity
-                    this.viewer.selectedEntity = pickedObject.id;
-                    return;
-                }
-            }
-            
-            // Clicked on empty space - deselect and stop camera follow
-            this.viewer.selectedEntity = undefined;
-            if (this.followTarget || this.viewer.trackedEntity) {
-                this.stopCameraFollow();
-            }
-        });
-
-        // Double-click to follow track with camera
-        this.viewer.cesiumWidget.canvas.addEventListener('dblclick', (event) => {
-            const pickedObject = this.viewer.scene.pick(event);
-            if (pickedObject && pickedObject.id) {
-                const entityId = pickedObject.id.id || pickedObject.id;
-                if (this.unitEntities.has(entityId)) {
-                    this.showFollowCameraOption(pickedObject.id);
-                }
             }
         });
     }
@@ -499,54 +474,17 @@ class AdvancedCesiumManager {
     highlightUnit(entity) {
         console.log('Unit highlighted:', entity.name);
 
-        // Highlight selected unit with green outline like before
+        // Highlight selected unit without triggering camera follow
         if (entity.model) {
             entity.model.silhouetteSize = 4;
-            entity.model.silhouetteColor = Cesium.Color.LIME;
+            entity.model.silhouetteColor = Cesium.Color.YELLOW;
         }
 
-        // Add green outline for point entities
+        // Add subtle visual feedback for selection
         if (entity.point) {
             entity.point.outlineWidth = 3;
-            entity.point.outlineColor = Cesium.Color.LIME;
+            entity.point.outlineColor = Cesium.Color.YELLOW;
         }
-
-        // Add green outline for billboard entities
-        if (entity.billboard) {
-            entity.billboard.scale = 1.2;
-        }
-    }
-
-    clearAllHighlights() {
-        // Clear highlighting from all entities
-        this.unitEntities.forEach(entity => {
-            if (entity.model) {
-                entity.model.silhouetteSize = 2; // Reset to default
-                entity.model.silhouetteColor = this.getUnitColor(entity.properties?.unitType || 'Unknown');
-            }
-            if (entity.point) {
-                entity.point.outlineWidth = 2; // Reset to default
-                entity.point.outlineColor = Cesium.Color.WHITE;
-            }
-            if (entity.billboard) {
-                entity.billboard.scale = 1.0; // Reset to default
-            }
-        });
-    }
-
-    stopCameraFollow() {
-        console.log('Stopping camera follow');
-        
-        // Clear follow targets
-        this.followTarget = null;
-        this.viewer.trackedEntity = undefined;
-        this.cameraFollowTarget = null;
-        this.followMode = 'none';
-        
-        // Reset camera controls to free mode
-        this.viewer.camera.constrainedAxis = undefined;
-        
-        console.log('Camera follow stopped - free camera mode enabled');
     }
 
     showFollowCameraOption(entity) {

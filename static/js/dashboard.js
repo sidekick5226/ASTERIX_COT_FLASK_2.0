@@ -261,7 +261,7 @@ class SurveillanceDashboard {
 
         // Add selection state styling
         const isSelected = this.selectedTracks.has(track.track_id);
-        const selectionClass = isSelected ? 'bg-orange-500/30 border-orange-500' : '';
+        const selectionClass = isSelected ? 'selected-track' : '';
         
         row.className = `border-b border-slate-600 hover:bg-slate-600/50 cursor-pointer ${selectionClass}`;
         row.dataset.trackId = track.track_id;
@@ -828,9 +828,17 @@ class SurveillanceDashboard {
     }
 
     showBattleGroupDialog() {
+        console.log('Attempting to show battle group dialog...');
         const dialog = document.getElementById('battle-group-dialog');
         const selectedCount = document.getElementById('selected-count');
         const selectedTracksPreview = document.getElementById('selected-tracks-preview');
+        
+        if (!dialog) {
+            console.error('Battle group dialog not found!');
+            return;
+        }
+        
+        console.log('Dialog element found, updating content...');
         
         // Update dialog content
         selectedCount.textContent = this.selectedTracks.size;
@@ -852,6 +860,7 @@ class SurveillanceDashboard {
         
         // Show dialog
         dialog.classList.remove('hidden');
+        console.log('Battle group dialog should now be visible');
     }
 
     hideBattleGroupDialog() {

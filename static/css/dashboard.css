@@ -124,7 +124,7 @@ body {
 /* Dashboard header */
 .dashboard-header {
     background: linear-gradient(90deg, #1e293b 0%, #334155 100%);
-    padding: 20px 30px;
+    padding: 20px 20px 19px 20px;
     border-bottom: 2px solid #3b4168;
     display: flex;
     justify-content: space-between;

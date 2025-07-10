@@ -236,7 +236,7 @@ class SurveillanceDashboard {
         const typeColors = {
             'Aircraft': 'bg-blue-600',
             'Vessel': 'bg-cyan-600',
-            'Vehicle': 'bg-orange-600'
+            'Vehicle': 'bg-amber-500'
         };
         
         const statusColors = {
@@ -378,7 +378,7 @@ class SurveillanceDashboard {
             const typeColors = {
                 'Aircraft': 'bg-blue-600 text-white',
                 'Vessel': 'bg-cyan-600 text-white',
-                'Vehicle': 'bg-orange-600 text-white'
+                'Vehicle': 'bg-amber-500 text-white'
             };
             const typeColor = typeColors[event.track_type] || 'bg-gray-600 text-white';
             

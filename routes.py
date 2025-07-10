@@ -139,13 +139,16 @@ def network_config():
 @socketio.on('connect')
 def handle_connect():
     """Handle client connection"""
-    print('Client connected')
+    print(f'Client connected: {request.sid}')
     emit('status', {'msg': 'Connected to surveillance system'})
+    # Send initial track data immediately
+    tracks = Track.query.filter_by(status='Active').all()
+    emit('track_update', [track.to_dict() for track in tracks])
 
 @socketio.on('disconnect')
 def handle_disconnect():
     """Handle client disconnection"""
-    print('Client disconnected')
+    print(f'Client disconnected: {request.sid}')
 
 @socketio.on('request_track_update')
 def handle_track_update_request():

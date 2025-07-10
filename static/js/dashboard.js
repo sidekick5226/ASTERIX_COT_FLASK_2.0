@@ -7,37 +7,66 @@ class SurveillanceDashboard {
         this.isLiveDemo = false;
         this.isBattleMode = false;
         this.updateInterval = null;
+        this.initialized = false;
 
-        this.init();
+        // Initialize after DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.init());
+        } else {
+            this.init();
+        }
     }
 
     init() {
-        this.bindEvents();
-        this.loadInitialData();
-        this.setupTabHandlers();
-        this.startPeriodicUpdates(); // Always check for updates every second
+        if (this.initialized) return; // Prevent double initialization
+        
+        try {
+            this.bindEvents();
+            this.loadInitialData();
+            this.setupTabHandlers();
+            this.startPeriodicUpdates(); // Always check for updates every second
+            this.initialized = true;
+        } catch (error) {
+            console.error('Error initializing dashboard:', error);
+        }
     }
 
     bindEvents() {
-        // Control buttons
-        document.getElementById('start-demo-btn').addEventListener('click', () => this.startLiveDemo());
-        document.getElementById('stop-demo-btn').addEventListener('click', () => this.stopLiveDemo());
-        document.getElementById('battle-mode-btn').addEventListener('click', () => this.toggleBattleMode());
+        try {
+            // Control buttons
+            const startBtn = document.getElementById('start-demo-btn');
+            const stopBtn = document.getElementById('stop-demo-btn');
+            const battleBtn = document.getElementById('battle-mode-btn');
+            
+            if (startBtn) startBtn.addEventListener('click', () => this.startLiveDemo());
+            if (stopBtn) stopBtn.addEventListener('click', () => this.stopLiveDemo());
+            if (battleBtn) {
+                battleBtn.addEventListener('click', () => this.toggleBattleMode());
+                // Add advanced 3D mode with double-click
+                battleBtn.addEventListener('dblclick', () => this.toggleAdvanced3DMode());
+            }
 
-        // Add advanced 3D mode with double-click
-        document.getElementById('battle-mode-btn').addEventListener('dblclick', () => this.toggleAdvanced3DMode());
+            // Filters
+            const typeFilter = document.getElementById('track-type-filter');
+            const searchInput = document.getElementById('search-input');
+            
+            if (typeFilter) typeFilter.addEventListener('change', (e) => this.filterTracks(e.target.value));
+            if (searchInput) searchInput.addEventListener('input', (e) => this.searchTracks(e.target.value));
 
-        // Filters
-        document.getElementById('track-type-filter').addEventListener('change', (e) => this.filterTracks(e.target.value));
-        document.getElementById('search-input').addEventListener('input', (e) => this.searchTracks(e.target.value));
+            // Event handlers
+            const refreshBtn = document.getElementById('refresh-events-btn');
+            const filterBtn = document.getElementById('filter-log-btn');
+            const exportBtn = document.getElementById('export-log-btn');
+            
+            if (refreshBtn) refreshBtn.addEventListener('click', () => this.refreshEvents());
+            if (filterBtn) filterBtn.addEventListener('click', () => this.filterEventLog());
+            if (exportBtn) exportBtn.addEventListener('click', () => this.exportEventLog());
 
-        // Event handlers
-        document.getElementById('refresh-events-btn').addEventListener('click', () => this.refreshEvents());
-        document.getElementById('filter-log-btn').addEventListener('click', () => this.filterEventLog());
-        document.getElementById('export-log-btn').addEventListener('click', () => this.exportEventLog());
-
-        // Network configuration
-        this.bindNetworkConfigEvents();
+            // Network configuration
+            this.bindNetworkConfigEvents();
+        } catch (error) {
+            console.error('Error binding events:', error);
+        }
     }
 
     bindNetworkConfigEvents() {
@@ -46,7 +75,9 @@ class SurveillanceDashboard {
         const ipAddress = document.getElementById('ip_address');
 
         [protocol, port, ipAddress].forEach(element => {
-            element.addEventListener('change', () => this.updateNetworkConfig());
+            if (element) {
+                element.addEventListener('change', () => this.updateNetworkConfig());
+            }
         });
     }
 
@@ -73,18 +104,24 @@ class SurveillanceDashboard {
     async loadTracks() {
         try {
             const response = await fetch('/api/tracks');
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
             const tracks = await response.json();
 
             this.tracks.clear();
-            tracks.forEach(track => {
-                this.tracks.set(track.track_id, track);
-            });
+            if (Array.isArray(tracks)) {
+                tracks.forEach(track => {
+                    this.tracks.set(track.track_id, track);
+                });
+            }
 
             this.updateTracksDisplay();
             this.updateTrackCounts();
 
-            if (window.mapManager) {
-                window.mapManager.updateTracks(tracks);
+            if (window.mapManager && typeof window.mapManager.updateTracks === 'function') {
+                window.mapManager.updateTracks(Array.from(this.tracks.values()));
             }
         } catch (error) {
             // Only log error, don't show notification to prevent popup spam
@@ -543,6 +580,8 @@ class SurveillanceDashboard {
     }
 
     onTrackUpdate(tracks) {
+        if (!Array.isArray(tracks)) return;
+        
         tracks.forEach(track => {
             this.tracks.set(track.track_id, track);
         });
@@ -551,16 +590,14 @@ class SurveillanceDashboard {
         this.updateTrackCounts();
 
         // Update 2D map if in standard mode
-        if (!this.isBattleMode && window.mapManager) {
+        if (!this.isBattleMode && window.mapManager && typeof window.mapManager.updateTracks === 'function') {
             window.mapManager.updateTracks(tracks);
-            console.log(`Updating ${tracks.length} tracks in 2D Standard view`);
         }
         
         // Update 3D map if in battle mode
-        if (this.isBattleMode && window.cesiumManager) {
+        if (this.isBattleMode && window.cesiumManager && typeof window.cesiumManager.updateUnitsFromCoT === 'function') {
             try {
                 window.cesiumManager.updateUnitsFromCoT(tracks);
-                console.log(`Updating ${tracks.length} tracks in 3D Battle view`);
             } catch (error) {
                 console.error('Error updating tracks in 3D mode:', error);
             }
@@ -587,7 +624,17 @@ class SurveillanceDashboard {
     }
 }
 
-// Initialize dashboard when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    window.dashboard = new SurveillanceDashboard();
-});
+// Initialize dashboard when DOM is loaded - only if not already initialized
+if (!window.dashboard) {
+    // Ensure single initialization
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!window.dashboard) {
+            window.dashboard = new SurveillanceDashboard();
+        }
+    });
+    
+    // Also initialize if DOM is already loaded
+    if (document.readyState !== 'loading' && !window.dashboard) {
+        window.dashboard = new SurveillanceDashboard();
+    }
+}

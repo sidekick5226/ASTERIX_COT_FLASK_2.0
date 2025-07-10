@@ -114,7 +114,19 @@ class SurveillanceDashboard {
     
     async loadTracks() {
         try {
-            const response = await fetch('/api/tracks');
+            const response = await fetch('/api/tracks', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                timeout: 3000 // 3 second timeout
+            });
+            
+            if (!response.ok) {
+                console.warn('Tracks API returned non-200 status:', response.status);
+                return;
+            }
+            
             const tracks = await response.json();
             
             this.tracks.clear();
@@ -129,20 +141,30 @@ class SurveillanceDashboard {
                 window.mapManager.updateTracks(tracks);
             }
         } catch (error) {
-            // Only log error, don't show notification to prevent popup spam
-            console.error('Error loading tracks:', error);
+            // Silently handle errors to avoid console spam
+            if (error.name !== 'AbortError') {
+                console.warn('Tracks temporarily unavailable');
+            }
         }
     }
     
     startPeriodicUpdates() {
-        // Check for track updates and monitor events every 2 seconds
+        // Check for track updates every 1 second, monitor events every 2 seconds
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
         }
+        if (this.monitorInterval) {
+            clearInterval(this.monitorInterval);
+        }
         
+        // Track updates every 1 second for responsiveness
         this.updateInterval = setInterval(async () => {
-            await this.loadTracks(); // Always check for track updates
-            await this.loadMonitorEvents(); // Always check for monitor events
+            await this.loadTracks();
+        }, 1000);
+        
+        // Monitor events every 2 seconds to avoid overwhelming the UI
+        this.monitorInterval = setInterval(async () => {
+            await this.loadMonitorEvents();
         }, 2000);
     }
     
@@ -150,6 +172,10 @@ class SurveillanceDashboard {
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
             this.updateInterval = null;
+        }
+        if (this.monitorInterval) {
+            clearInterval(this.monitorInterval);
+            this.monitorInterval = null;
         }
     }
     
@@ -364,7 +390,19 @@ class SurveillanceDashboard {
     
     async loadMonitorEvents() {
         try {
-            const response = await fetch('/api/monitor-events');
+            const response = await fetch('/api/monitor-events', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                timeout: 3000 // 3 second timeout
+            });
+            
+            if (!response.ok) {
+                console.warn('Monitor events API returned non-200 status:', response.status);
+                return;
+            }
+            
             const data = await response.json();
             
             if (data.status === 'success') {
@@ -377,7 +415,10 @@ class SurveillanceDashboard {
                 console.log(`Loaded ${this.monitorEvents.length} monitor events`);
             }
         } catch (error) {
-            console.error('Error loading monitor events:', error);
+            // Silently handle errors to avoid console spam
+            if (error.name !== 'AbortError') {
+                console.warn('Monitor events temporarily unavailable');
+            }
         }
     }
     

@@ -444,9 +444,11 @@ class SurveillanceDashboard {
     
     async loadEventLog() {
         try {
+            console.log('Loading Event Log data...');
             const response = await fetch(`/api/events?page=${this.currentPage}&per_page=20`);
             const data = await response.json();
             
+            console.log('Event Log data received:', data);
             this.updateEventLogDisplay(data.events);
             this.updatePagination(data.current_page, data.pages);
         } catch (error) {
@@ -456,25 +458,32 @@ class SurveillanceDashboard {
     
     updateEventLogDisplay(events) {
         const tbody = document.getElementById('events-log-body');
-        if (!tbody) return;
+        if (!tbody) {
+            console.error('Event Log table body not found');
+            return;
+        }
         
         tbody.innerHTML = '';
+        
+        console.log('Displaying', events.length, 'events in Event Log');
         
         events.forEach(event => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${new Date(event.timestamp).toLocaleString()}</td>
-                <td>${event.track_id}</td>
-                <td><span class="status-badge status-${event.event_type.toLowerCase().replace(' ', '-')}">${event.event_type}</span></td>
-                <td>${event.description}</td>
-                <td>
-                    <button class="btn btn-sm btn-outline-info action-btn" onclick="dashboard.viewEventDetails(${event.id})">
+                <td class="px-4 py-2">${new Date(event.timestamp).toLocaleString()}</td>
+                <td class="px-4 py-2">${event.track_id}</td>
+                <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs font-semibold bg-blue-100 text-blue-800">${event.event_type}</span></td>
+                <td class="px-4 py-2">${event.description}</td>
+                <td class="px-4 py-2">
+                    <button class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs" onclick="dashboard.viewEventDetails(${event.id})">
                         <i class="fas fa-info-circle"></i>
                     </button>
                 </td>
             `;
             tbody.appendChild(row);
         });
+        
+        console.log('Added', tbody.children.length, 'rows to Event Log table');
     }
     
     updatePagination(currentPage, totalPages) {

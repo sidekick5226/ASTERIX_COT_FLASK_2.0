@@ -24,6 +24,13 @@ function showTab(tabName) {
             }
         }, 100);
     }
+    
+    // Load Event Log data when switching to Event Log tab
+    if (tabName === 'event-log' && window.dashboard) {
+        setTimeout(() => {
+            window.dashboard.loadEventLog();
+        }, 100);
+    }
 }
 
 // Initialize default tab on page load

@@ -233,20 +233,44 @@ def update_tracks_realtime():
                     track.last_updated = datetime.utcnow()
                     updated_tracks.append(track.to_dict())
                     
-                    # Occasionally create events
-                    if random.random() < 0.05:  # 5% chance
-                        event_types = ['Position Update', 'Speed Change', 'Course Change']
+                    # Create real-time event for Event Monitor (always for each track update)
+                    monitor_event = {
+                        'track_id': track.track_id,
+                        'event_type': 'Track Update',
+                        'description': f'Track {track.track_id} updated - Position: {track.latitude:.4f}, {track.longitude:.4f}, Speed: {track.speed:.1f}',
+                        'timestamp': datetime.utcnow().isoformat(),
+                        'is_realtime': True
+                    }
+                    
+                    # Occasionally create historical events for Event Log
+                    if random.random() < 0.03:  # 3% chance for log events
+                        log_event_types = ['Course Change', 'Speed Alert', 'Altitude Change', 'Communication']
                         event = Event(
                             track_id=track.track_id,
-                            event_type=random.choice(event_types),
-                            description=f'Track {track.track_id}: {random.choice(event_types).lower()}'
+                            event_type=random.choice(log_event_types),
+                            description=f'Track {track.track_id}: {random.choice(log_event_types).lower()} - {random.choice(["routine update", "deviation detected", "normal operation", "status change"])}'
                         )
                         db.session.add(event)
                 
                 db.session.commit()
                 
-                # Emit updates to all connected clients
+                # Emit track updates to all connected clients
                 socketio.emit('track_update', updated_tracks)
+                
+                # Create real-time monitor events for each active track
+                monitor_events = []
+                for track_dict in updated_tracks:
+                    monitor_event = {
+                        'track_id': track_dict['track_id'],
+                        'event_type': 'Track Update',
+                        'description': f"Track {track_dict['track_id']} - {track_dict['track_type']} at {track_dict['latitude']:.4f}, {track_dict['longitude']:.4f}",
+                        'timestamp': datetime.utcnow().isoformat(),
+                        'is_realtime': True
+                    }
+                    monitor_events.append(monitor_event)
+                
+                # Emit real-time events to Event Monitor
+                socketio.emit('monitor_events', monitor_events)
             
         except Exception as e:
             print(f"Error updating tracks: {e}")

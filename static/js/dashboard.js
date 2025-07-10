@@ -2,12 +2,15 @@
 class SurveillanceDashboard {
     constructor() {
         this.tracks = new Map();
-        this.events = [];
+        this.events = []; // Historical events for Event Log
+        this.monitorEvents = []; // Real-time events for Event Monitor
         this.currentPage = 1;
         this.isLiveDemo = false;
         this.isBattleMode = false;
         this.updateInterval = null;
+        this.socket = io(); // Initialize Socket.IO connection
         
+        this.setupSocketHandlers();
         this.init();
     }
     
@@ -16,6 +19,32 @@ class SurveillanceDashboard {
         this.loadInitialData();
         this.setupTabHandlers();
         this.startPeriodicUpdates(); // Always check for updates every second
+    }
+    
+    setupSocketHandlers() {
+        // Handle real-time track updates
+        this.socket.on('track_update', (tracks) => {
+            this.onTrackUpdate(tracks);
+        });
+        
+        // Handle real-time monitor events (for Event Monitor)
+        this.socket.on('monitor_events', (events) => {
+            this.onMonitorEvents(events);
+        });
+        
+        // Handle connection status
+        this.socket.on('status', (data) => {
+            console.log('Status update:', data.msg);
+            this.showNotification(data.msg, 'info');
+        });
+        
+        this.socket.on('connect', () => {
+            console.log('Connected to surveillance system');
+        });
+        
+        this.socket.on('disconnect', () => {
+            console.log('Disconnected from surveillance system');
+        });
     }
     
     bindEvents() {
@@ -279,16 +308,37 @@ class SurveillanceDashboard {
         
         tbody.innerHTML = '';
         
-        this.events.slice(0, 50).forEach(event => { // Show latest 50 events
+        // Show real-time monitor events (most recent first)
+        this.monitorEvents.slice(-50).reverse().forEach(event => { // Show latest 50 events
             const row = document.createElement('tr');
+            row.className = 'border-b border-slate-600 hover:bg-slate-600/50';
+            
+            const timestamp = event.timestamp ? new Date(event.timestamp).toLocaleString() : new Date().toLocaleString();
+            const eventTypeClass = event.event_type.toLowerCase().replace(' ', '-');
+            
             row.innerHTML = `
-                <td>${new Date(event.timestamp).toLocaleString()}</td>
-                <td>${event.track_id}</td>
-                <td><span class="status-badge status-${event.event_type.toLowerCase().replace(' ', '-')}">${event.event_type}</span></td>
-                <td>${event.description}</td>
+                <td class="px-3 py-2 text-slate-300">${timestamp}</td>
+                <td class="px-3 py-2 text-blue-400">${event.track_id}</td>
+                <td class="px-3 py-2">
+                    <span class="px-2 py-1 rounded text-xs font-medium ${event.is_realtime ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'}">${event.event_type}</span>
+                </td>
+                <td class="px-3 py-2 text-slate-300">${event.description}</td>
             `;
             tbody.appendChild(row);
         });
+    }
+    
+    onMonitorEvents(events) {
+        // Add new monitor events to the beginning of the array
+        this.monitorEvents.push(...events);
+        
+        // Keep only the latest 200 monitor events to prevent memory issues
+        if (this.monitorEvents.length > 200) {
+            this.monitorEvents = this.monitorEvents.slice(-200);
+        }
+        
+        // Update the Event Monitor display
+        this.updateEventsDisplay();
     }
     
     async loadEventLog() {

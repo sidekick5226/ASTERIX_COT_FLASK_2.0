@@ -116,7 +116,11 @@ def get_monitor_events():
             monitor_event = {
                 'track_id': track.track_id,
                 'event_type': 'Track Update',
-                'description': f"Track {track.track_id} - {track.track_type} at {track.latitude:.4f}, {track.longitude:.4f}, Speed: {track.speed:.1f} knots",
+                'track_type': track.track_type,
+                'latitude': round(track.latitude, 4),
+                'longitude': round(track.longitude, 4),
+                'speed': round(track.speed, 1) if track.speed else 0,
+                'altitude': round(track.altitude, 0) if track.altitude else 0,
                 'timestamp': current_time,
                 'is_realtime': True
             }

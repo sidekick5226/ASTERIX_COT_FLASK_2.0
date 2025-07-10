@@ -354,7 +354,7 @@ class SurveillanceDashboard {
             // Show placeholder message when no events
             const placeholderRow = document.createElement('tr');
             placeholderRow.innerHTML = `
-                <td colspan="4" class="px-4 py-8 text-center text-slate-400">
+                <td colspan="8" class="px-4 py-8 text-center text-slate-400">
                     <i class="fas fa-eye-slash text-2xl mb-2"></i><br>
                     No real-time events yet<br>
                     <small>Events will appear here when surveillance is active</small>
@@ -374,13 +374,27 @@ class SurveillanceDashboard {
             
             const timestamp = event.timestamp ? new Date(event.timestamp).toLocaleString() : new Date().toLocaleString();
             
+            // Track type color coding
+            const typeColors = {
+                'Aircraft': 'bg-blue-600 text-white',
+                'Vessel': 'bg-cyan-600 text-white',
+                'Vehicle': 'bg-green-600 text-white'
+            };
+            const typeColor = typeColors[event.track_type] || 'bg-gray-600 text-white';
+            
             row.innerHTML = `
-                <td class="px-4 py-3 text-slate-300">${timestamp}</td>
-                <td class="px-4 py-3 text-blue-400">${event.track_id}</td>
-                <td class="px-4 py-3">
+                <td class="px-3 py-2 text-slate-300 text-xs">${timestamp}</td>
+                <td class="px-3 py-2 text-blue-400 font-medium">${event.track_id}</td>
+                <td class="px-3 py-2">
                     <span class="px-2 py-1 rounded text-xs font-medium ${event.is_realtime ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'}">${event.event_type}</span>
                 </td>
-                <td class="px-4 py-3 text-slate-300">${event.description}</td>
+                <td class="px-3 py-2">
+                    <span class="px-2 py-1 rounded text-xs font-medium ${typeColor}">${event.track_type || 'Unknown'}</span>
+                </td>
+                <td class="px-3 py-2 text-slate-300 font-mono text-xs">${event.latitude || 'N/A'}</td>
+                <td class="px-3 py-2 text-slate-300 font-mono text-xs">${event.longitude || 'N/A'}</td>
+                <td class="px-3 py-2 text-slate-300 text-right">${event.speed || 0}</td>
+                <td class="px-3 py-2 text-slate-300 text-right">${event.altitude || 0}</td>
             `;
             tbody.appendChild(row);
         });

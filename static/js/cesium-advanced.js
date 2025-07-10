@@ -190,30 +190,7 @@ class AdvancedCesiumManager {
     }
 
     setupClickHandlers() {
-        // Single-click handler for selection and deselection
-        this.viewer.cesiumWidget.canvas.addEventListener('click', (event) => {
-            const pickedEntity = this.viewer.scene.pick(event);
-            if (pickedEntity && pickedEntity.id && this.unitEntities.has(pickedEntity.id.id)) {
-                // Select the entity
-                this.viewer.selectedEntity = pickedEntity.id;
-            } else {
-                // Clicked on empty space - deselect and stop camera follow
-                this.viewer.selectedEntity = undefined;
-                if (this.followTarget || this.viewer.trackedEntity) {
-                    this.stopCameraFollow();
-                }
-            }
-        });
-
-        // Double-click to follow track with camera
-        this.viewer.cesiumWidget.canvas.addEventListener('dblclick', (event) => {
-            const pickedEntity = this.viewer.scene.pick(event);
-            if (pickedEntity && pickedEntity.id && this.unitEntities.has(pickedEntity.id.id)) {
-                this.showFollowCameraOption(pickedEntity.id);
-            }
-        });
-
-        // Handle entity selection highlighting
+        // Handle entity selection and highlighting
         this.viewer.selectedEntityChanged.addEventListener((selectedEntity) => {
             // Clear previous highlighting
             this.clearAllHighlights();
@@ -221,6 +198,36 @@ class AdvancedCesiumManager {
             if (selectedEntity && this.unitEntities.has(selectedEntity.id)) {
                 // Just highlight the selected unit, don't start camera follow
                 this.highlightUnit(selectedEntity);
+            }
+        });
+
+        // Single-click handler for selection and deselection
+        this.viewer.cesiumWidget.canvas.addEventListener('click', (event) => {
+            const pickedObject = this.viewer.scene.pick(event);
+            if (pickedObject && pickedObject.id) {
+                const entityId = pickedObject.id.id || pickedObject.id;
+                if (this.unitEntities.has(entityId)) {
+                    // Select the entity
+                    this.viewer.selectedEntity = pickedObject.id;
+                    return;
+                }
+            }
+            
+            // Clicked on empty space - deselect and stop camera follow
+            this.viewer.selectedEntity = undefined;
+            if (this.followTarget || this.viewer.trackedEntity) {
+                this.stopCameraFollow();
+            }
+        });
+
+        // Double-click to follow track with camera
+        this.viewer.cesiumWidget.canvas.addEventListener('dblclick', (event) => {
+            const pickedObject = this.viewer.scene.pick(event);
+            if (pickedObject && pickedObject.id) {
+                const entityId = pickedObject.id.id || pickedObject.id;
+                if (this.unitEntities.has(entityId)) {
+                    this.showFollowCameraOption(pickedObject.id);
+                }
             }
         });
     }
@@ -492,16 +499,21 @@ class AdvancedCesiumManager {
     highlightUnit(entity) {
         console.log('Unit highlighted:', entity.name);
 
-        // Highlight selected unit without triggering camera follow
+        // Highlight selected unit with green outline like before
         if (entity.model) {
             entity.model.silhouetteSize = 4;
-            entity.model.silhouetteColor = Cesium.Color.YELLOW;
+            entity.model.silhouetteColor = Cesium.Color.LIME;
         }
 
-        // Add subtle visual feedback for selection
+        // Add green outline for point entities
         if (entity.point) {
             entity.point.outlineWidth = 3;
-            entity.point.outlineColor = Cesium.Color.YELLOW;
+            entity.point.outlineColor = Cesium.Color.LIME;
+        }
+
+        // Add green outline for billboard entities
+        if (entity.billboard) {
+            entity.billboard.scale = 1.2;
         }
     }
 
@@ -509,12 +521,15 @@ class AdvancedCesiumManager {
         // Clear highlighting from all entities
         this.unitEntities.forEach(entity => {
             if (entity.model) {
-                entity.model.silhouetteSize = 0;
-                entity.model.silhouetteColor = Cesium.Color.TRANSPARENT;
+                entity.model.silhouetteSize = 2; // Reset to default
+                entity.model.silhouetteColor = this.getUnitColor(entity.properties?.unitType || 'Unknown');
             }
             if (entity.point) {
                 entity.point.outlineWidth = 2; // Reset to default
                 entity.point.outlineColor = Cesium.Color.WHITE;
+            }
+            if (entity.billboard) {
+                entity.billboard.scale = 1.0; // Reset to default
             }
         });
     }

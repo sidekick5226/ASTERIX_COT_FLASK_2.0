@@ -101,11 +101,13 @@ Preferred communication style: Simple, everyday language.
 - **CoT Integration**: Added CoT (Cursor-on-Target) XML processor for military standard data exchange and real-time WebSocket broadcasting
 - **Camera Follow System**: Implemented chase cam, first-person, and orbital camera modes for tactical unit following
 
-### Advanced 3D Features
-- **Terrain**: Quantized-mesh tiles with local server capability (currently using Cesium World Terrain as fallback)
-- **Buildings**: 3D building models from OSM/LiDAR data (currently using Cesium OSM Buildings as fallback)
-- **Units**: glTF model positioning via CoT lat/lon/heading coordinates with realistic altitude defaults
+### Advanced 3D Battle Mode Features
+- **Unified Interface**: Single Battle View button activates all advanced 3D features
+- **Active Tracks Table**: Hidden in Battle Mode for immersive 3D experience
+- **Terrain**: Quantized-mesh tiles with local server capability (ready for integration)
+- **Buildings**: 3D building models from OSM/LiDAR data (ready for local 3D tiles)
+- **Units**: glTF model positioning via CoT lat/lon/heading coordinates with geometric fallbacks
 - **Follow Cameras**: Chase view, first-person drone, and orbital camera modes with smooth transitions
 - **CoT Broadcasting**: Real-time WebSocket CoT XML updates for ASTERIX-to-CoT data conversion
 
-The application now supports dual map modes (2D Leaflet standard and 3D CesiumJS advanced) with full responsive design adaptable to any screen size, making it suitable for both desktop surveillance operations and mobile tactical use.
+The application supports dual map modes (2D Leaflet standard and Advanced 3D CesiumJS battle view) with full responsive design adaptable to any screen size, making it suitable for both desktop surveillance operations and mobile tactical use.

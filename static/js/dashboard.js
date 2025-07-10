@@ -441,37 +441,78 @@ class SurveillanceDashboard {
     toggleBattleMode() {
         this.isBattleMode = !this.isBattleMode;
         const btn = document.getElementById('battle-mode-btn');
-
+        
         if (this.isBattleMode) {
+            // Activate Advanced 3D Battle Mode
             btn.innerHTML = '<i class="fas fa-globe"></i> Standard View';
             btn.classList.add('active');
-            if (window.mapManager) {
-                window.mapManager.switchTo3D();
+            
+            // Hide active tracks table in battle mode
+            const tracksTable = document.querySelector('#active-tracks .bg-slate-700');
+            if (tracksTable) {
+                tracksTable.style.display = 'none';
             }
-            this.showNotification('Battle Mode activated', 'success');
+            
+            // Hide 2D map and show 3D container
+            const map2D = document.getElementById('leaflet-map');
+            const container3D = document.getElementById('cesium-map');
+            
+            if (map2D) map2D.style.display = 'none';
+            if (container3D) {
+                container3D.style.display = 'block';
+                container3D.style.height = '100%';
+                container3D.style.width = '100%';
+            }
+            
+            // Initialize Advanced Cesium viewer if not already done
+            if (!window.cesiumManager) {
+                window.cesiumManager = new CesiumAdvancedManager('cesium-container');
+            }
+            
+            // Resize Cesium viewer and update tracks
+            if (window.cesiumManager && window.cesiumManager.viewer) {
+                console.log('Switching to 3D Battle View...');
+                console.log('Resizing Cesium viewer and updating tracks...');
+                window.cesiumManager.viewer.resize();
+                
+                // Update tracks in 3D mode
+                if (this.tracks.size > 0) {
+                    const tracksArray = Array.from(this.tracks.values());
+                    window.cesiumManager.updateUnitsFromCoT(tracksArray);
+                    console.log(`Updated 3D Battle View with ${tracksArray.length} tracks`);
+                }
+            }
+            
+            this.showNotification('Advanced 3D Battle Mode: Quantized terrain, 3D buildings, glTF units, follow cam activated', 'success');
+            console.log('3D Battle View activated successfully');
         } else {
+            // Switch back to Standard 2D View
             btn.innerHTML = '<i class="fas fa-fighter-jet"></i> Battle View';
             btn.classList.remove('active');
-            if (window.mapManager) {
-                window.mapManager.switchTo2D();
+            
+            // Show active tracks table again
+            const tracksTable = document.querySelector('#active-tracks .bg-slate-700');
+            if (tracksTable) {
+                tracksTable.style.display = 'block';
             }
-            this.showNotification('Standard view activated', 'info');
+            
+            // Show 2D map and hide 3D container
+            const map2D = document.getElementById('leaflet-map');
+            const container3D = document.getElementById('cesium-map');
+            
+            if (map2D) map2D.style.display = 'block';
+            if (container3D) container3D.style.display = 'none';
+            
+            // Update 2D map if available
+            if (window.mapManager) {
+                window.mapManager.updateTracks(Array.from(this.tracks.values()));
+            }
+            
+            this.showNotification('Standard 2D view activated', 'info');
         }
     }
 
-    toggleAdvanced3DMode() {
-        if (window.advancedCesium) {
-            // Switch to advanced 3D mode
-            window.advancedCesium.enable3DMode();
-            this.showNotification('Advanced 3D Mode: Quantized terrain, 3D buildings, glTF units, follow cam enabled', 'success');
-
-            const btn = document.getElementById('battle-mode-btn');
-            btn.innerHTML = '<i class="fas fa-cube"></i> Advanced 3D';
-            btn.classList.add('advanced-3d');
-        } else {
-            this.showNotification('Advanced 3D mode not available', 'error');
-        }
-    }
+    // Removed toggleAdvanced3DMode - now integrated into toggleBattleMode
 
     viewTrackDetails(trackId) {
         const track = this.tracks.get(trackId);

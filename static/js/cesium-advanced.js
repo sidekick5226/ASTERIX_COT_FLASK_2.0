@@ -57,12 +57,12 @@ class AdvancedCesiumManager {
         this.viewer.scene.fog.enabled = false;
         this.viewer.scene.skyBox.show = true;
         
-        // Set initial global surveillance view - centered perspective for Battle Mode
+        // Set initial global surveillance view - perfectly centered perspective for Battle Mode
         this.viewer.camera.setView({
-            destination: Cesium.Cartesian3.fromDegrees(0.0, 0.0, 15000000),
+            destination: Cesium.Cartesian3.fromDegrees(-120.0, 15.0, 18000000),
             orientation: {
                 heading: 0.0,
-                pitch: -Cesium.Math.PI_OVER_TWO + 0.3,
+                pitch: -Cesium.Math.PI_OVER_TWO + 0.4,
                 roll: 0.0
             }
         });
@@ -843,10 +843,10 @@ class AdvancedCesiumManager {
     resetToOptimalView() {
         // Reset camera to optimal global surveillance view when entering Battle Mode
         this.viewer.camera.flyTo({
-            destination: Cesium.Cartesian3.fromDegrees(0.0, 0.0, 15000000),
+            destination: Cesium.Cartesian3.fromDegrees(-120.0, 15.0, 18000000),
             orientation: {
                 heading: 0.0,
-                pitch: -Cesium.Math.PI_OVER_TWO + 0.3,
+                pitch: -Cesium.Math.PI_OVER_TWO + 0.4,
                 roll: 0.0
             },
             duration: 2.0

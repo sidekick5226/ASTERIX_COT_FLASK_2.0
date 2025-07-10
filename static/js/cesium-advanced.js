@@ -119,12 +119,53 @@ class AdvancedCesiumManager {
     }
     
     addCameraControlsUI() {
-        // Add camera control buttons to the viewer toolbar
-        const toolbar = this.viewer.toolbar;
+        // Create a custom toolbar container if one doesn't exist
+        let toolbar = document.querySelector('.cesium-viewer-toolbar');
+        
+        if (!toolbar) {
+            // Create a floating toolbar for camera controls
+            toolbar = document.createElement('div');
+            toolbar.className = 'cesium-camera-toolbar';
+            toolbar.style.cssText = `
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                z-index: 1000;
+                display: flex;
+                gap: 5px;
+                background: rgba(42, 42, 42, 0.8);
+                padding: 5px;
+                border-radius: 5px;
+            `;
+            
+            // Append to the cesium container
+            const cesiumContainer = document.getElementById('cesium-container');
+            if (cesiumContainer) {
+                cesiumContainer.appendChild(toolbar);
+            } else {
+                // Fallback: append to cesium-map
+                const cesiumMap = document.getElementById('cesium-map');
+                if (cesiumMap) {
+                    cesiumMap.appendChild(toolbar);
+                } else {
+                    console.warn('Could not find container for camera controls toolbar');
+                    return;
+                }
+            }
+        }
         
         // Follow Camera Button
         const followButton = document.createElement('button');
         followButton.className = 'cesium-button cesium-toolbar-button';
+        followButton.style.cssText = `
+            background: #444;
+            border: 1px solid #666;
+            color: white;
+            padding: 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+        `;
         followButton.innerHTML = '<i class="fas fa-video"></i>';
         followButton.title = 'Follow Camera Mode';
         followButton.onclick = () => this.toggleFollowMode();
@@ -133,6 +174,15 @@ class AdvancedCesiumManager {
         // Reset Camera Button
         const resetButton = document.createElement('button');
         resetButton.className = 'cesium-button cesium-toolbar-button';
+        resetButton.style.cssText = `
+            background: #444;
+            border: 1px solid #666;
+            color: white;
+            padding: 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+        `;
         resetButton.innerHTML = '<i class="fas fa-home"></i>';
         resetButton.title = 'Reset Camera View';
         resetButton.onclick = () => this.resetCamera();

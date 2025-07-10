@@ -333,22 +333,22 @@ body {
         height: auto;
         position: relative;
     }
-    
+
     .main-content {
         margin-left: 0;
     }
-    
+
     .dashboard-header {
         flex-direction: column;
         gap: 15px;
         align-items: flex-start;
     }
-    
+
     .dashboard-controls {
         width: 100%;
         justify-content: flex-start;
     }
-    
+
     .track-legend {
         position: relative;
         top: auto;
@@ -419,4 +419,16 @@ body {
     font-size: 0.75rem;
     border-radius: 4px;
     margin: 0 2px;
+}
+
+.track-item.vehicle {
+    border-left: 4px solid #ff8800;
+}
+
+.track-item.vehicle .track-icon {
+    color: #ff8800;
+}
+
+.track-item.vehicle .track-status {
+    background: #ff8800;
 }

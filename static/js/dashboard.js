@@ -15,93 +15,93 @@ class SurveillanceDashboard {
             reconnectionAttempts: 5,
             transports: ['polling', 'websocket']
         }); // Initialize Socket.IO connection
-        
+
         this.setupSocketHandlers();
         this.init();
     }
-    
+
     init() {
         this.bindEvents();
         this.loadInitialData();
         this.setupTabHandlers();
         this.startPeriodicUpdates(); // Always check for updates every second
     }
-    
+
     setupSocketHandlers() {
         console.log('Setting up socket handlers...');
-        
+
         // Handle real-time track updates
         this.socket.on('track_update', (tracks) => {
             console.log('Received track_update:', tracks.length, 'tracks');
             this.onTrackUpdate(tracks);
         });
-        
+
         // Handle connection status
         this.socket.on('status', (data) => {
             console.log('Status update:', data.msg);
             this.showNotification(data.msg, 'info');
         });
-        
+
         this.socket.on('connect', () => {
             console.log('Connected to surveillance system');
         });
-        
+
         this.socket.on('disconnect', () => {
             console.log('Disconnected from surveillance system');
         });
-        
+
         this.socket.on('connect_error', (error) => {
             console.error('Connection error:', error);
         });
     }
-    
+
     bindEvents() {
         // Control buttons
         document.getElementById('start-demo-btn').addEventListener('click', () => this.startLiveDemo());
         document.getElementById('stop-demo-btn').addEventListener('click', () => this.stopLiveDemo());
         document.getElementById('battle-mode-btn').addEventListener('click', () => this.toggleBattleMode());
-        
+
         // Add advanced 3D mode with double-click
         document.getElementById('battle-mode-btn').addEventListener('dblclick', () => this.toggleAdvanced3DMode());
-        
+
         // Filters
         document.getElementById('track-type-filter').addEventListener('change', (e) => this.filterTracks(e.target.value));
         document.getElementById('search-input').addEventListener('input', (e) => this.searchTracks(e.target.value));
-        
+
         // Event handlers
         document.getElementById('refresh-events-btn').addEventListener('click', () => this.refreshEvents());
         document.getElementById('filter-log-btn').addEventListener('click', () => this.filterEventLog());
         document.getElementById('export-log-btn').addEventListener('click', () => this.exportEventLog());
-        
+
         // Network configuration
         this.bindNetworkConfigEvents();
     }
-    
+
     bindNetworkConfigEvents() {
         const protocol = document.getElementById('protocol');
         const port = document.getElementById('port');
         const ipAddress = document.getElementById('ip_address');
-        
+
         [protocol, port, ipAddress].forEach(element => {
             element.addEventListener('change', () => this.updateNetworkConfig());
         });
     }
-    
+
     setupTabHandlers() {
         // Tab handlers are now managed by the tabs.js file and Alpine.js
         // No need to set up Bootstrap tab handlers
     }
-    
+
     handleTabChange(target) {
         // Tab changes are now handled by tabs.js
         // This method is kept for compatibility but no longer needed
     }
-    
+
     async loadInitialData() {
         try {
             // Only load network config on startup, not tracks
             await this.loadNetworkConfig();
-            
+
             // Initialize empty tracks display
             this.tracks.clear();
             this.updateTracksDisplay();
@@ -111,7 +111,7 @@ class SurveillanceDashboard {
             // Don't show popup notification to prevent spam
         }
     }
-    
+
     async loadTracks() {
         try {
             const response = await fetch('/api/tracks', {
@@ -121,33 +121,32 @@ class SurveillanceDashboard {
                 },
                 timeout: 3000 // 3 second timeout
             });
-            
+
             if (!response.ok) {
                 console.warn('Tracks API returned non-200 status:', response.status);
                 return;
             }
-            
+
             const tracks = await response.json();
-            
+
             this.tracks.clear();
             tracks.forEach(track => {
                 this.tracks.set(track.track_id, track);
             });
-            
+
             this.updateTracksDisplay();
             this.updateTrackCounts();
-            
+
             if (window.mapManager) {
                 window.mapManager.updateTracks(tracks);
             }
         } catch (error) {
             // Silently handle errors to avoid console spam
             if (error.name !== 'AbortError') {
-                console.warn('Tracks temporarily unavailable');
-            }
+                console.warn('Tracks temporarily unavailable');            }
         }
     }
-    
+
     startPeriodicUpdates() {
         // Check for track updates every 1 second, monitor events every 2 seconds
         if (this.updateInterval) {
@@ -156,18 +155,18 @@ class SurveillanceDashboard {
         if (this.monitorInterval) {
             clearInterval(this.monitorInterval);
         }
-        
+
         // Track updates every 1 second for responsiveness
         this.updateInterval = setInterval(async () => {
             await this.loadTracks();
         }, 1000);
-        
+
         // Monitor events every 2 seconds to avoid overwhelming the UI
         this.monitorInterval = setInterval(async () => {
             await this.loadMonitorEvents();
         }, 2000);
     }
-    
+
     stopPeriodicUpdates() {
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
@@ -178,12 +177,12 @@ class SurveillanceDashboard {
             this.monitorInterval = null;
         }
     }
-    
+
     async loadNetworkConfig() {
         try {
             const response = await fetch('/api/network-config');
             const config = await response.json();
-            
+
             document.getElementById('protocol').value = config.protocol;
             document.getElementById('port').value = config.port;
             document.getElementById('ip_address').value = config.ip_address;
@@ -191,7 +190,7 @@ class SurveillanceDashboard {
             console.error('Error loading network config:', error);
         }
     }
-    
+
     async updateNetworkConfig() {
         try {
             const config = {
@@ -200,7 +199,7 @@ class SurveillanceDashboard {
                 ip_address: document.getElementById('ip_address').value,
                 is_active: true
             };
-            
+
             const response = await fetch('/api/network-config', {
                 method: 'POST',
                 headers: {
@@ -208,7 +207,7 @@ class SurveillanceDashboard {
                 },
                 body: JSON.stringify(config)
             });
-            
+
             if (response.ok) {
                 this.showNotification('Network configuration updated', 'success');
             }
@@ -217,38 +216,38 @@ class SurveillanceDashboard {
             this.showNotification('Error updating network configuration', 'error');
         }
     }
-    
+
     updateTracksDisplay() {
         const tbody = document.getElementById('tracks-table-body');
         tbody.innerHTML = '';
-        
+
         this.tracks.forEach(track => {
             const row = this.createTrackRow(track);
             tbody.appendChild(row);
         });
-        
+
         document.getElementById('total-tracks').textContent = this.tracks.size;
     }
-    
+
     createTrackRow(track) {
         const row = document.createElement('tr');
-        
+
         const typeColors = {
             'Aircraft': 'bg-blue-600',
             'Vessel': 'bg-cyan-600',
             'Vehicle': 'bg-green-600'
         };
-        
+
         const statusColors = {
             'Active': 'bg-green-600',
             'Inactive': 'bg-red-600',
             'Unknown': 'bg-gray-600'
         };
-        
+
         const trackType = track.track_type || track.type || 'Unknown';
         const typeColor = typeColors[trackType] || 'bg-gray-600';
         const statusColor = statusColors[track.status] || 'bg-gray-600';
-        
+
         row.className = 'border-b border-slate-600 hover:bg-slate-600/50';
         row.innerHTML = `
             <td class="px-3 py-2">${track.track_id}</td>
@@ -271,7 +270,7 @@ class SurveillanceDashboard {
         `;
         return row;
     }
-    
+
     updateTrackCounts() {
         const counts = {
             aircraft: 0,
@@ -279,7 +278,7 @@ class SurveillanceDashboard {
             vehicle: 0,
             unknown: 0
         };
-        
+
         this.tracks.forEach(track => {
             const type = (track.track_type || track.type || 'unknown').toLowerCase();
             if (counts.hasOwnProperty(type)) {
@@ -288,19 +287,19 @@ class SurveillanceDashboard {
                 counts.unknown++;
             }
         });
-        
+
         document.getElementById('aircraft-count').textContent = counts.aircraft;
         document.getElementById('vessel-count').textContent = counts.vessel;
         document.getElementById('vehicle-count').textContent = counts.vehicle;
         document.getElementById('unknown-count').textContent = counts.unknown;
     }
-    
+
     filterTracks(type) {
         // Implementation for track filtering
         if (window.mapManager) {
             window.mapManager.filterByType(type);
         }
-        
+
         // Update table display
         const rows = document.querySelectorAll('#tracks-table-body tr');
         rows.forEach(row => {
@@ -312,7 +311,7 @@ class SurveillanceDashboard {
             }
         });
     }
-    
+
     searchTracks(query) {
         const rows = document.querySelectorAll('#tracks-table-body tr');
         rows.forEach(row => {
@@ -324,32 +323,32 @@ class SurveillanceDashboard {
             }
         });
     }
-    
+
     async refreshEvents() {
         try {
             // Refresh both monitor events and event log
             await this.loadMonitorEvents();
             await this.loadEventLog();
-            
+
             this.showNotification('Events refreshed', 'success');
         } catch (error) {
             console.error('Error refreshing events:', error);
             this.showNotification('Error refreshing events', 'error');
         }
     }
-    
+
     updateEventsDisplay() {
         const tbody = document.getElementById('events-table-body');
         if (!tbody) {
             console.log('events-table-body not found!');
             return;
         }
-        
+
         console.log('Updating events display with', this.monitorEvents.length, 'monitor events');
-        
+
         // Clear existing content
         tbody.innerHTML = '';
-        
+
         if (this.monitorEvents.length === 0) {
             // Show placeholder message when no events
             const placeholderRow = document.createElement('tr');
@@ -363,17 +362,17 @@ class SurveillanceDashboard {
             tbody.appendChild(placeholderRow);
             return;
         }
-        
+
         // Show real-time monitor events (most recent first)
         const eventsToShow = this.monitorEvents.slice(-50).reverse();
         console.log('Displaying', eventsToShow.length, 'events');
-        
+
         eventsToShow.forEach(event => {
             const row = document.createElement('tr');
             row.className = 'border-b border-slate-600 hover:bg-slate-600/50';
-            
+
             const timestamp = event.timestamp ? new Date(event.timestamp).toLocaleString() : new Date().toLocaleString();
-            
+
             // Track type color coding
             const typeColors = {
                 'Aircraft': 'bg-blue-600 text-white',
@@ -381,7 +380,7 @@ class SurveillanceDashboard {
                 'Vehicle': 'bg-green-600 text-white'
             };
             const typeColor = typeColors[event.track_type] || 'bg-gray-600 text-white';
-            
+
             row.innerHTML = `
                 <td class="px-3 py-2 text-slate-300 text-xs">${timestamp}</td>
                 <td class="px-3 py-2 text-blue-400 font-medium">${event.track_id}</td>
@@ -398,10 +397,10 @@ class SurveillanceDashboard {
             `;
             tbody.appendChild(row);
         });
-        
+
         console.log('Added', tbody.children.length, 'rows to events table');
     }
-    
+
     async loadMonitorEvents() {
         try {
             const response = await fetch('/api/monitor-events', {
@@ -411,21 +410,21 @@ class SurveillanceDashboard {
                 },
                 timeout: 3000 // 3 second timeout
             });
-            
+
             if (!response.ok) {
                 console.warn('Monitor events API returned non-200 status:', response.status);
                 return;
             }
-            
+
             const data = await response.json();
-            
+
             if (data.status === 'success') {
                 // Replace monitor events with current real-time data
                 this.monitorEvents = data.events || [];
-                
+
                 // Update the Event Monitor display
                 this.updateEventsDisplay();
-                
+
                 console.log(`Loaded ${this.monitorEvents.length} monitor events`);
             }
         } catch (error) {
@@ -435,19 +434,19 @@ class SurveillanceDashboard {
             }
         }
     }
-    
+
     onMonitorEvents(events) {
         // This method is kept for compatibility but no longer used
         // Monitor events are now loaded via polling
         console.log('Legacy monitor events handler called');
     }
-    
+
     async loadEventLog() {
         try {
             console.log('Loading Event Log data...');
             const response = await fetch(`/api/events?page=${this.currentPage}&per_page=20`);
             const data = await response.json();
-            
+
             console.log('Event Log data received:', data);
             this.updateEventLogDisplay(data.events);
             this.updatePagination(data.current_page, data.pages);
@@ -455,18 +454,18 @@ class SurveillanceDashboard {
             console.error('Error loading event log:', error);
         }
     }
-    
+
     updateEventLogDisplay(events) {
         const tbody = document.getElementById('events-log-body');
         if (!tbody) {
             console.error('Event Log table body not found');
             return;
         }
-        
+
         tbody.innerHTML = '';
-        
+
         console.log('Displaying', events.length, 'events in Event Log');
-        
+
         events.forEach(event => {
             const row = document.createElement('tr');
             row.innerHTML = `
@@ -482,22 +481,22 @@ class SurveillanceDashboard {
             `;
             tbody.appendChild(row);
         });
-        
+
         console.log('Added', tbody.children.length, 'rows to Event Log table');
     }
-    
+
     updatePagination(currentPage, totalPages) {
         const pagination = document.getElementById('log-pagination');
         if (!pagination) return;
-        
+
         pagination.innerHTML = '';
-        
+
         // Previous button
         const prevItem = document.createElement('li');
         prevItem.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
         prevItem.innerHTML = `<a class="page-link" href="#" onclick="dashboard.goToPage(${currentPage - 1})">Previous</a>`;
         pagination.appendChild(prevItem);
-        
+
         // Page numbers
         for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) {
             const pageItem = document.createElement('li');
@@ -505,29 +504,29 @@ class SurveillanceDashboard {
             pageItem.innerHTML = `<a class="page-link" href="#" onclick="dashboard.goToPage(${i})">${i}</a>`;
             pagination.appendChild(pageItem);
         }
-        
+
         // Next button
         const nextItem = document.createElement('li');
         nextItem.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
         nextItem.innerHTML = `<a class="page-link" href="#" onclick="dashboard.goToPage(${currentPage + 1})">Next</a>`;
         pagination.appendChild(nextItem);
     }
-    
+
     goToPage(page) {
         this.currentPage = page;
         this.loadEventLog();
     }
-    
+
     filterEventLog() {
         const startDate = document.getElementById('start-date').value;
         const endDate = document.getElementById('end-date').value;
         const eventType = document.getElementById('event-type-filter').value;
-        
+
         // Implementation for filtering event log
         console.log('Filtering events:', { startDate, endDate, eventType });
         this.showNotification('Event log filtered', 'info');
     }
-    
+
     exportEventLog() {
         // Implementation for exporting event log
         const data = this.events.map(event => ({
@@ -536,17 +535,17 @@ class SurveillanceDashboard {
             event_type: event.event_type,
             description: event.description
         }));
-        
+
         const csv = this.convertToCSV(data);
         this.downloadCSV(csv, 'event_log.csv');
     }
-    
+
     convertToCSV(data) {
         const headers = Object.keys(data[0]).join(',');
         const rows = data.map(row => Object.values(row).join(','));
         return [headers, ...rows].join('\n');
     }
-    
+
     downloadCSV(csv, filename) {
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
@@ -556,17 +555,17 @@ class SurveillanceDashboard {
         a.click();
         window.URL.revokeObjectURL(url);
     }
-    
+
     startLiveDemo() {
         // Immediately update UI for responsiveness
         this.isLiveDemo = true;
         const startBtn = document.getElementById('start-demo-btn');
         const stopBtn = document.getElementById('stop-demo-btn');
-        
+
         startBtn.disabled = true;
         stopBtn.disabled = false;
         startBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting...';
-        
+
         // Start surveillance tracking
         fetch('/api/surveillance/start', { method: 'POST' })
             .then(response => response.json())
@@ -584,27 +583,27 @@ class SurveillanceDashboard {
                 this.showNotification('Error starting surveillance', 'error');
             });
     }
-    
+
     stopLiveDemo() {
         // Immediately update UI for responsiveness
         const startBtn = document.getElementById('start-demo-btn');
         const stopBtn = document.getElementById('stop-demo-btn');
-        
+
         this.isLiveDemo = false;
         startBtn.disabled = false;
         stopBtn.disabled = true;
         stopBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Stopping...';
-        
+
         // Immediately clear UI for responsive feel
         this.tracks.clear();
         this.updateTracksDisplay();
         this.updateTrackCounts();
-        
+
         // Clear tracks from map immediately
         if (window.mapManager) {
             window.mapManager.clearAllTracks();
         }
-        
+
         // Stop surveillance tracking
         fetch('/api/surveillance/stop', { method: 'POST' })
             .then(response => response.json())
@@ -619,18 +618,18 @@ class SurveillanceDashboard {
                 this.showNotification('Error stopping surveillance', 'error');
             });
     }
-    
+
     toggleBattleMode() {
         this.isBattleMode = !this.isBattleMode;
         const btn = document.getElementById('battle-mode-btn');
         const tracksPanel = document.getElementById('active-tracks-panel');
         const mapContainer = document.getElementById('map-container');
         const trackLegend = document.getElementById('track-legend');
-        
+
         if (this.isBattleMode) {
             btn.innerHTML = '<i class="fas fa-globe"></i> Standard View';
             btn.classList.add('active');
-            
+
             // Hide Active Tracks Panel and Track Legend for clean immersive view
             if (tracksPanel) {
                 tracksPanel.classList.add('hidden');
@@ -642,7 +641,7 @@ class SurveillanceDashboard {
                 mapContainer.classList.remove('flex-1');
                 mapContainer.classList.add('w-full');
             }
-            
+
             if (window.mapManager) {
                 window.mapManager.switchTo3D();
             }
@@ -650,7 +649,7 @@ class SurveillanceDashboard {
         } else {
             btn.innerHTML = '<i class="fas fa-globe-americas mr-1"></i> Battle View';
             btn.classList.remove('active');
-            
+
             // Show Active Tracks Panel and Track Legend for standard view
             if (tracksPanel) {
                 tracksPanel.classList.remove('hidden');
@@ -662,20 +661,20 @@ class SurveillanceDashboard {
                 mapContainer.classList.remove('w-full');
                 mapContainer.classList.add('flex-1');
             }
-            
+
             if (window.mapManager) {
                 window.mapManager.switchTo2D();
             }
             this.showNotification('Standard view activated', 'info');
         }
     }
-    
+
     toggleAdvanced3DMode() {
         if (window.advancedCesium) {
             // Switch to advanced 3D mode
             window.advancedCesium.enable3DMode();
             this.showNotification('Advanced 3D Mode: Quantized terrain, 3D buildings, glTF units, follow cam enabled', 'success');
-            
+
             const btn = document.getElementById('battle-mode-btn');
             btn.innerHTML = '<i class="fas fa-cube"></i> Advanced 3D';
             btn.classList.add('advanced-3d');
@@ -683,40 +682,40 @@ class SurveillanceDashboard {
             this.showNotification('Advanced 3D mode not available', 'error');
         }
     }
-    
+
     viewTrackDetails(trackId) {
         const track = this.tracks.get(trackId);
         if (track) {
             alert(`Track Details:\nID: ${track.track_id}\nType: ${track.type}\nPosition: ${track.latitude}, ${track.longitude}\nStatus: ${track.status}`);
         }
     }
-    
+
     trackOnMap(trackId) {
         if (window.mapManager) {
             window.mapManager.focusOnTrack(trackId);
         }
     }
-    
+
     viewEventDetails(eventId) {
         const event = this.events.find(e => e.id === eventId);
         if (event) {
             alert(`Event Details:\nID: ${event.id}\nTrack: ${event.track_id}\nType: ${event.event_type}\nTime: ${event.timestamp}\nDescription: ${event.description}`);
         }
     }
-    
+
     onTrackUpdate(tracks) {
         tracks.forEach(track => {
             this.tracks.set(track.track_id, track);
         });
-        
+
         this.updateTracksDisplay();
         this.updateTrackCounts();
-        
+
         if (window.mapManager) {
             window.mapManager.updateTracks(tracks);
         }
     }
-    
+
     showNotification(message, type = 'info') {
         // Simple notification system
         const notification = document.createElement('div');
@@ -726,14 +725,23 @@ class SurveillanceDashboard {
             ${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
-        
+
         document.body.appendChild(notification);
-        
+
         setTimeout(() => {
             if (notification.parentNode) {
                 notification.parentNode.removeChild(notification);
             }
         }, 5000);
+    }
+
+    getTrackTypeColor(type) {
+        switch (type.toLowerCase()) {
+            case 'aircraft': return '#3b82f6';
+            case 'vessel': return '#10b981';
+            case 'vehicle': return '#ff8800';
+            default: return '#6b7280';
+        }
     }
 }
 

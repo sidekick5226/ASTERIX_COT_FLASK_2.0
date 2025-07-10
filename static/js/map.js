@@ -8,21 +8,21 @@ class MapManager {
         this.is3DMode = false;
         this.tracks = [];
         this.showTrails = true; // ATAK-CIV style movement trails
-        
+
         this.init();
     }
-    
+
     init() {
         this.initLeafletMap();
         // Don't initialize basic Cesium - use AdvancedCesiumManager instead
         // this.initCesiumMap();
     }
-    
+
     // Alias method for compatibility
     initMaps() {
         this.init();
     }
-    
+
     initLeafletMap() {
         // Check if map is already initialized
         const mapContainer = document.getElementById('leaflet-map');
@@ -30,7 +30,7 @@ class MapManager {
             console.log('Leaflet map already initialized, reusing existing instance');
             return;
         }
-        
+
         // Initialize Leaflet map (2D)
         this.leafletMap = L.map('leaflet-map', {
             center: [40.0, -74.0], // New York area
@@ -38,25 +38,25 @@ class MapManager {
             zoomControl: true,
             attributionControl: true
         });
-        
+
         // Add dark theme tile layer
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
             subdomains: 'abcd',
             maxZoom: 20
         }).addTo(this.leafletMap);
-        
+
         // Add scale control
         L.control.scale({
             position: 'bottomleft',
             imperial: true,
             metric: true
         }).addTo(this.leafletMap);
-        
+
         // Custom control for map info
         this.addMapInfoControl();
     }
-    
+
     initCesiumMap() {
         // Initialize Cesium map (3D) with reliable configuration
         try {
@@ -79,7 +79,7 @@ class MapManager {
                     credit: 'Esri, DigitalGlobe, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community'
                 })
             });
-            
+
             // Set initial camera position over North America for surveillance
             this.cesiumViewer.camera.setView({
                 destination: Cesium.Cartesian3.fromDegrees(-95.0, 39.0, 2000000), // Center of North America
@@ -89,25 +89,25 @@ class MapManager {
                     roll: 0.0
                 }
             });
-            
+
             // Enable lighting for realistic satellite view
             this.cesiumViewer.scene.globe.enableLighting = true;
             this.cesiumViewer.scene.globe.dynamicAtmosphereLighting = true;
             this.cesiumViewer.scene.globe.atmosphereHueShift = 0.0;
             this.cesiumViewer.scene.globe.atmosphereSaturationShift = 0.1;
             this.cesiumViewer.scene.globe.atmosphereBrightnessShift = 0.1;
-            
+
             // Configure for satellite surveillance view
             this.cesiumViewer.scene.skyBox.show = true;
             this.cesiumViewer.scene.sun.show = true;
             this.cesiumViewer.scene.moon.show = true;
             this.cesiumViewer.scene.skyAtmosphere.show = true;
             this.cesiumViewer.scene.fog.enabled = false; // Disable fog for clearer satellite view
-            
+
         } catch (error) {
             console.error('Error initializing Cesium:', error);
             console.log('Trying fallback Cesium configuration...');
-            
+
             // Fallback: Use satellite imagery with basic configuration
             try {
                 this.cesiumViewer = new Cesium.Viewer('cesium-map', {
@@ -128,14 +128,14 @@ class MapManager {
                         url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'
                     })
                 });
-                
+
                 // Set basic camera view
                 this.cesiumViewer.camera.setView({
                     destination: Cesium.Cartesian3.fromDegrees(-95.0, 39.0, 2000000)
                 });
-                
+
                 console.log('Cesium initialized with fallback configuration');
-                
+
                 // Test if viewer is actually working
                 setTimeout(() => {
                     if (this.cesiumViewer && this.cesiumViewer.scene) {
@@ -144,7 +144,7 @@ class MapManager {
                         console.error('Cesium scene not available');
                     }
                 }, 1000);
-                
+
             } catch (fallbackError) {
                 console.error('Cesium fallback also failed:', fallbackError);
                 console.log('3D Battle View unavailable - WebGL support required');
@@ -152,10 +152,10 @@ class MapManager {
             }
         }
     }
-    
+
     addMapInfoControl() {
         const mapInfo = L.control({ position: 'topleft' });
-        
+
         mapInfo.onAdd = function(map) {
             const div = L.DomUtil.create('div', 'map-info-control');
             div.style.cssText = `
@@ -175,9 +175,9 @@ class MapManager {
             `;
             return div;
         };
-        
+
         mapInfo.addTo(this.leafletMap);
-        
+
         // Update coordinates on mouse move
         this.leafletMap.on('mousemove', (e) => {
             const coords = document.getElementById('mouse-coords');
@@ -185,7 +185,7 @@ class MapManager {
                 coords.textContent = `${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`;
             }
         });
-        
+
         // Update zoom level
         this.leafletMap.on('zoomend', () => {
             const zoomDisplay = document.getElementById('zoom-level');
@@ -194,39 +194,39 @@ class MapManager {
             }
         });
     }
-    
+
     updateTracks(tracks) {
         console.log(`Updating ${tracks.length} tracks in ${this.is3DMode ? '3D Battle' : '2D Standard'} view`);
         this.tracks = tracks;
-        
+
         // Update 2D map when in 2D mode or always keep it synchronized
         if (!this.is3DMode && this.leafletMap) {
             this.updateLeafletTracks(tracks);
         }
-        
+
         // Update 3D map when in 3D mode using Advanced Cesium Manager
         if (this.is3DMode && window.advancedCesium && window.advancedCesium.viewer) {
             window.advancedCesium.updateTracks(tracks);
         }
-        
+
         // Also update basic Cesium viewer if it exists (fallback)
         if (this.cesiumViewer && !this.is3DMode) {
             this.updateCesiumTracks(tracks);
         }
     }
-    
+
     updateLeafletTracks(tracks) {
         tracks.forEach(track => {
             const trackId = track.track_id;
             const newPosition = [track.latitude, track.longitude];
-            
+
             // Handle existing marker
             if (this.trackMarkers.has(trackId)) {
                 const marker = this.trackMarkers.get(trackId);
-                
+
                 // Update marker position
                 marker.setLatLng(newPosition);
-                
+
                 // Update popup content  
                 const popupContent = this.createPopupContent(track);
                 marker.setPopupContent(popupContent);
@@ -237,7 +237,7 @@ class MapManager {
                 this.trackMarkers.set(trackId, marker);
             }
         });
-        
+
         // Remove markers for tracks that no longer exist
         const activeTrackIds = new Set(tracks.map(t => t.track_id));
         this.trackMarkers.forEach((marker, trackId) => {
@@ -247,11 +247,11 @@ class MapManager {
             }
         });
     }
-    
+
     createLeafletMarker(track) {
         const icon = this.getTrackIcon(track.type);
         const color = this.getTrackColor(track.type);
-        
+
         // Create custom HTML marker
         const customIcon = L.divIcon({
             html: `<div style="color: ${color}; font-size: 16px; text-align: center;">
@@ -262,18 +262,18 @@ class MapManager {
             iconAnchor: [20, 20],
             className: 'custom-track-marker'
         });
-        
+
         const marker = L.marker([track.latitude, track.longitude], { 
             icon: customIcon,
             title: `${track.track_id} - ${track.type}`
         });
-        
+
         // Add popup with track details
         const popupContent = this.createPopupContent(track);
         marker.bindPopup(popupContent);
         return marker;
     }
-    
+
     createPopupContent(track) {
         return `
             <div style="color: #000; min-width: 200px;">
@@ -300,19 +300,19 @@ class MapManager {
             </div>
         `;
     }
-    
+
     updateCesiumTracks(tracks) {
         if (!this.cesiumViewer) return;
-        
+
         // Clear existing entities
         this.cesiumViewer.entities.removeAll();
-        
+
         // Add new entities
         tracks.forEach(track => {
             this.createCesiumEntity(track);
         });
     }
-    
+
     createCesiumEntity(track) {
         const color = this.getCesiumColor(track.type);
         // Use reasonable altitude defaults for 3D view
@@ -329,13 +329,13 @@ class MapManager {
                 altitude = 100; // 100 feet for ground vehicles
             }
         }
-        
+
         const position = Cesium.Cartesian3.fromDegrees(
             track.longitude, 
             track.latitude, 
             altitude
         );
-        
+
         this.cesiumViewer.entities.add({
             position: position,
             point: {
@@ -369,7 +369,7 @@ class MapManager {
             `
         });
     }
-    
+
     getTrackIcon(type) {
         switch (type.toLowerCase()) {
             case 'aircraft': return 'fas fa-plane';
@@ -378,17 +378,17 @@ class MapManager {
             default: return 'fas fa-question-circle';
         }
     }
-    
+
     getTrackColor(type) {
         const trackType = (type || '').toLowerCase();
         switch (trackType) {
             case 'aircraft': return '#3b82f6';
-            case 'vessel': return '#10b981';
+            case 'vessel': return '#9333ea';
             case 'vehicle': return '#d97706';
             default: return '#6b7280';
         }
     }
-    
+
     getCesiumColor(type) {
         const trackType = (type || '').toLowerCase();
         switch (trackType) {
@@ -398,26 +398,26 @@ class MapManager {
             default: return Cesium.Color.GRAY;
         }
     }
-    
+
     switchTo3D() {
         console.log('Switching to 3D Battle View...');
         this.is3DMode = true;
-        
+
         // Hide Leaflet map and show Cesium map
         const leafletContainer = document.getElementById('leaflet-map');
         const cesiumContainer = document.getElementById('cesium-map');
-        
+
         if (leafletContainer && cesiumContainer) {
             leafletContainer.classList.add('hidden');
             cesiumContainer.classList.remove('hidden');
         }
-        
+
         // Update map mode display
         const modeDisplay = document.getElementById('map-mode-display');
         if (modeDisplay) {
             modeDisplay.textContent = '3D Battle';
         }
-        
+
         // Destroy any existing MapManager Cesium viewer to prevent conflicts
         if (this.cesiumViewer) {
             try {
@@ -428,13 +428,13 @@ class MapManager {
                 console.warn('Error destroying basic Cesium viewer:', error);
             }
         }
-        
+
         // Use the Advanced Cesium Manager instead
         if (window.advancedCesium && window.advancedCesium.viewer) {
             console.log('Activating Advanced Cesium 3D Battle View...');
             // Call show() method to trigger optimal view reset
             window.advancedCesium.show();
-            
+
             setTimeout(() => {
                 try {
                     // Update tracks using advanced Cesium
@@ -451,26 +451,26 @@ class MapManager {
             console.error('Advanced Cesium Manager not available');
         }
     }
-    
+
     switchTo2D() {
         console.log('Switching to 2D Standard View...');
         this.is3DMode = false;
-        
+
         // Show Leaflet map and hide Cesium map
         const leafletContainer = document.getElementById('leaflet-map');
         const cesiumContainer = document.getElementById('cesium-map');
-        
+
         if (leafletContainer && cesiumContainer) {
             leafletContainer.classList.remove('hidden');
             cesiumContainer.classList.add('hidden');
         }
-        
+
         // Update map mode display
         const modeDisplay = document.getElementById('map-mode-display');
         if (modeDisplay) {
             modeDisplay.textContent = '2D Standard';
         }
-        
+
         // Refresh Leaflet map
         if (this.leafletMap) {
             setTimeout(() => {
@@ -480,10 +480,10 @@ class MapManager {
             }, 100);
         }
     }
-    
+
     clearAllTracks() {
         this.tracks = [];
-        
+
         // Clear Leaflet markers
         if (this.leafletMap) {
             this.trackMarkers.forEach(marker => {
@@ -491,22 +491,22 @@ class MapManager {
             });
             this.trackMarkers.clear();
         }
-        
+
         // Clear Cesium entities
         if (this.cesiumViewer) {
             this.cesiumViewer.entities.removeAll();
         }
     }
-    
+
     filterByType(type) {
         const filteredTracks = type ? this.tracks.filter(track => track.type === type) : this.tracks;
         this.updateTracks(filteredTracks);
     }
-    
+
     focusOnTrack(trackId) {
         const track = this.tracks.find(t => t.track_id === trackId);
         if (!track) return;
-        
+
         if (this.is3DMode && this.cesiumViewer) {
             // Focus on track in 3D
             this.cesiumViewer.camera.flyTo({
@@ -520,7 +520,7 @@ class MapManager {
         } else if (this.leafletMap) {
             // Focus on track in 2D
             this.leafletMap.setView([track.latitude, track.longitude], 12);
-            
+
             // Open popup if marker exists
             const marker = this.trackMarkers.get(trackId);
             if (marker) {
@@ -528,7 +528,7 @@ class MapManager {
             }
         }
     }
-    
+
     invalidateSize() {
         if (this.leafletMap && !this.is3DMode) {
             this.leafletMap.invalidateSize();

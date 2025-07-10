@@ -326,7 +326,22 @@ class SurveillanceDashboard {
         
         console.log('Updating events display with', this.monitorEvents.length, 'monitor events');
         
+        // Clear existing content
         tbody.innerHTML = '';
+        
+        if (this.monitorEvents.length === 0) {
+            // Show placeholder message when no events
+            const placeholderRow = document.createElement('tr');
+            placeholderRow.innerHTML = `
+                <td colspan="4" class="px-4 py-8 text-center text-slate-400">
+                    <i class="fas fa-eye-slash text-2xl mb-2"></i><br>
+                    No real-time events yet<br>
+                    <small>Events will appear here when surveillance is active</small>
+                </td>
+            `;
+            tbody.appendChild(placeholderRow);
+            return;
+        }
         
         // Show real-time monitor events (most recent first)
         const eventsToShow = this.monitorEvents.slice(-50).reverse();
@@ -337,7 +352,6 @@ class SurveillanceDashboard {
             row.className = 'border-b border-slate-600 hover:bg-slate-600/50';
             
             const timestamp = event.timestamp ? new Date(event.timestamp).toLocaleString() : new Date().toLocaleString();
-            const eventTypeClass = event.event_type.toLowerCase().replace(' ', '-');
             
             row.innerHTML = `
                 <td class="px-4 py-3 text-slate-300">${timestamp}</td>

@@ -553,8 +553,12 @@ class SurveillanceDashboard {
         this.updateTracksDisplay();
         this.updateTrackCounts();
 
+        // Check if we're in battle mode by looking at the button state
+        const battleBtn = document.getElementById('battle-mode-btn');
+        const isInBattleMode = battleBtn && battleBtn.classList.contains('active');
+        
         // Update both 2D and 3D views
-        if (this.isBattleMode && window.advancedCesiumManager) {
+        if (isInBattleMode && window.advancedCesiumManager) {
             // Update 3D Battle View
             window.advancedCesiumManager.updateUnitsFromCoT(tracks);
             console.log(`Updating ${tracks.length} tracks in 3D Battle view`);
@@ -565,7 +569,8 @@ class SurveillanceDashboard {
         }
         
         // Debug logging
-        console.log('Battle mode status:', this.isBattleMode);
+        console.log('Battle mode status (from button):', isInBattleMode);
+        console.log('Battle mode flag:', this.isBattleMode);
         console.log('CesiumManager exists:', !!window.advancedCesiumManager);
     }
 

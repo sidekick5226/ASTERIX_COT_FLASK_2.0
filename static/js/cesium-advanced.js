@@ -209,12 +209,17 @@ class AdvancedCesiumManager {
         if (tracks.length > 0 && this.viewer.entities.values.length > 0) {
             setTimeout(() => {
                 try {
-                    this.viewer.zoomTo(this.viewer.entities);
+                    this.viewer.zoomTo(this.viewer.entities, new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-45), 0));
                     console.log('Zoomed to show all entities');
                 } catch (error) {
                     console.log('Zoom to entities failed, using fallback view');
+                    // Fallback: fly to North America surveillance area
+                    this.viewer.camera.flyTo({
+                        destination: Cesium.Cartesian3.fromDegrees(-75.0, 40.0, 5000000),
+                        duration: 2.0
+                    });
                 }
-            }, 500);
+            }, 1000);
         }
     }
     
@@ -281,34 +286,16 @@ class AdvancedCesiumManager {
         // Use bright, visible geometric shapes for all units
         const unitColor = this.getUnitColor(unitType);
         
-        if (unitType === 'Aircraft') {
-            entityConfig.point = {
-                pixelSize: 25,
-                color: unitColor,
-                outlineColor: Cesium.Color.WHITE,
-                outlineWidth: 3,
-                heightReference: Cesium.HeightReference.NONE,
-                disableDepthTestDistance: Number.POSITIVE_INFINITY
-            };
-        } else if (unitType === 'Vessel') {
-            entityConfig.point = {
-                pixelSize: 20,
-                color: unitColor,
-                outlineColor: Cesium.Color.WHITE,
-                outlineWidth: 3,
-                heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-                disableDepthTestDistance: Number.POSITIVE_INFINITY
-            };
-        } else {
-            entityConfig.point = {
-                pixelSize: 18,
-                color: unitColor,
-                outlineColor: Cesium.Color.WHITE,
-                outlineWidth: 3,
-                heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
-                disableDepthTestDistance: Number.POSITIVE_INFINITY
-            };
-        }
+        // Use consistent point styling for maximum visibility
+        entityConfig.point = {
+            pixelSize: unitType === 'Aircraft' ? 30 : unitType === 'Vessel' ? 25 : 20,
+            color: unitColor,
+            outlineColor: Cesium.Color.WHITE,
+            outlineWidth: 4,
+            heightReference: unitType === 'Vessel' ? Cesium.HeightReference.CLAMP_TO_GROUND : Cesium.HeightReference.NONE,
+            disableDepthTestDistance: Number.POSITIVE_INFINITY,
+            scaleByDistance: new Cesium.NearFarScalar(1.5e2, 2.0, 1.5e7, 0.5)
+        };
         
         const entity = this.viewer.entities.add(entityConfig);
         

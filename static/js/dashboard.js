@@ -22,13 +22,17 @@ class SurveillanceDashboard {
     }
     
     setupSocketHandlers() {
+        console.log('Setting up socket handlers...');
+        
         // Handle real-time track updates
         this.socket.on('track_update', (tracks) => {
+            console.log('Received track_update:', tracks.length, 'tracks');
             this.onTrackUpdate(tracks);
         });
         
         // Handle real-time monitor events (for Event Monitor)
         this.socket.on('monitor_events', (events) => {
+            console.log('Received monitor_events:', events);
             this.onMonitorEvents(events);
         });
         
@@ -44,6 +48,10 @@ class SurveillanceDashboard {
         
         this.socket.on('disconnect', () => {
             console.log('Disconnected from surveillance system');
+        });
+        
+        this.socket.on('connect_error', (error) => {
+            console.error('Connection error:', error);
         });
     }
     
@@ -304,12 +312,20 @@ class SurveillanceDashboard {
     
     updateEventsDisplay() {
         const tbody = document.getElementById('events-table-body');
-        if (!tbody) return;
+        if (!tbody) {
+            console.log('events-table-body not found!');
+            return;
+        }
+        
+        console.log('Updating events display with', this.monitorEvents.length, 'monitor events');
         
         tbody.innerHTML = '';
         
         // Show real-time monitor events (most recent first)
-        this.monitorEvents.slice(-50).reverse().forEach(event => { // Show latest 50 events
+        const eventsToShow = this.monitorEvents.slice(-50).reverse();
+        console.log('Displaying', eventsToShow.length, 'events');
+        
+        eventsToShow.forEach(event => {
             const row = document.createElement('tr');
             row.className = 'border-b border-slate-600 hover:bg-slate-600/50';
             
@@ -317,18 +333,22 @@ class SurveillanceDashboard {
             const eventTypeClass = event.event_type.toLowerCase().replace(' ', '-');
             
             row.innerHTML = `
-                <td class="px-3 py-2 text-slate-300">${timestamp}</td>
-                <td class="px-3 py-2 text-blue-400">${event.track_id}</td>
-                <td class="px-3 py-2">
+                <td class="px-4 py-3 text-slate-300">${timestamp}</td>
+                <td class="px-4 py-3 text-blue-400">${event.track_id}</td>
+                <td class="px-4 py-3">
                     <span class="px-2 py-1 rounded text-xs font-medium ${event.is_realtime ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'}">${event.event_type}</span>
                 </td>
-                <td class="px-3 py-2 text-slate-300">${event.description}</td>
+                <td class="px-4 py-3 text-slate-300">${event.description}</td>
             `;
             tbody.appendChild(row);
         });
+        
+        console.log('Added', tbody.children.length, 'rows to events table');
     }
     
     onMonitorEvents(events) {
+        console.log('Received monitor events:', events);
+        
         // Add new monitor events to the beginning of the array
         this.monitorEvents.push(...events);
         
@@ -337,8 +357,10 @@ class SurveillanceDashboard {
             this.monitorEvents = this.monitorEvents.slice(-200);
         }
         
-        // Update the Event Monitor display
+        // Update the Event Monitor display immediately
         this.updateEventsDisplay();
+        
+        console.log(`Total monitor events: ${this.monitorEvents.length}`);
     }
     
     async loadEventLog() {

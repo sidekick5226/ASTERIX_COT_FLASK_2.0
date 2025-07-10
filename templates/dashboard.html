@@ -20,16 +20,14 @@
             </button>
         </div>
     </div>
-
+    
     <!-- Main Content Area -->
     <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
         <!-- Map Container -->
         <div class="flex-1 relative h-64 lg:h-full">
             <div id="leaflet-map" class="absolute inset-0"></div>
-            <div id="cesium-map" class="absolute inset-0 hidden">
-                <div id="cesium-container" style="width: 100%; height: 100%;"></div>
-            </div>
-
+            <div id="cesium-map" class="absolute inset-0 hidden"></div>
+            
             <!-- Track Legend - Overlay -->
             <div class="absolute top-4 right-4 bg-navy/90 backdrop-blur-sm border border-slate-600 rounded-lg p-3 lg:p-4 min-w-40 lg:min-w-48 text-xs lg:text-sm">
                 <h6 class="text-sm font-semibold text-white mb-3">Track Legend</h6>
@@ -65,9 +63,9 @@
                 </div>
             </div>
         </div>
-
+        
         <!-- Active Tracks Panel -->
-        <div id="active-tracks-panel" class="w-full lg:w-96 bg-slate-700 border-t lg:border-t-0 lg:border-l border-slate-600 flex flex-col max-h-96 lg:max-h-full">
+        <div class="w-full lg:w-96 bg-slate-700 border-t lg:border-t-0 lg:border-l border-slate-600 flex flex-col max-h-96 lg:max-h-full">
             <div class="p-4 border-b border-slate-600">
                 <h6 class="text-sm font-semibold text-white flex items-center">
                     <i class="fas fa-list mr-2"></i> Active Tracks
@@ -104,7 +102,7 @@
             <i class="fas fa-sync mr-1"></i> Refresh
         </button>
     </div>
-
+    
     <div class="flex-1 overflow-hidden p-4">
         <div class="bg-slate-700 rounded-lg h-full overflow-hidden">
             <div class="overflow-x-auto h-full">
@@ -135,7 +133,7 @@
             <i class="fas fa-download mr-1"></i> Export Log
         </button>
     </div>
-
+    
     <!-- Filters -->
     <div class="p-4 bg-slate-700 border-b border-slate-600">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -163,7 +161,7 @@
             </div>
         </div>
     </div>
-
+    
     <!-- Log Table -->
     <div class="flex-1 overflow-hidden p-4">
         <div class="bg-slate-700 rounded-lg h-full overflow-hidden">
@@ -185,7 +183,7 @@
             </div>
         </div>
     </div>
-
+    
     <!-- Pagination -->
     <div class="p-4 border-t border-slate-600">
         <div class="flex justify-center space-x-2" id="log-pagination">
@@ -201,7 +199,7 @@
             <i class="fas fa-comments mr-2"></i> Messenger
         </h2>
     </div>
-
+    
     <div class="flex-1 flex items-center justify-center p-8">
         <div class="text-center">
             <i class="fas fa-comments text-6xl text-slate-500 mb-4"></i>

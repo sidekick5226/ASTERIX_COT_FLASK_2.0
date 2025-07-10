@@ -16,10 +16,10 @@ function showTab(tabName) {
     }
     
     // Update dashboard on tab switch
-    if (tabName === 'dashboard' && window.dashboard && typeof window.dashboard.loadInitialData === 'function') {
+    if (tabName === 'dashboard' && window.dashboard) {
         setTimeout(() => {
             window.dashboard.loadInitialData();
-            if (window.mapManager && typeof window.mapManager.initMaps === 'function') {
+            if (window.mapManager) {
                 window.mapManager.initMaps();
             }
         }, 100);

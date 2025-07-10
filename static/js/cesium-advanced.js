@@ -27,13 +27,7 @@ class AdvancedCesiumManager {
     
     setupCesiumViewer() {
         // Initialize Cesium with advanced configuration
-        const container = document.getElementById('cesium-container') || document.getElementById('cesium-map');
-        if (!container) {
-            console.error('Cesium container not found');
-            return;
-        }
-        
-        this.viewer = new Cesium.Viewer(container, {
+        this.viewer = new Cesium.Viewer('cesium-map', {
             baseLayerPicker: false,
             geocoder: false,
             homeButton: false,
@@ -125,53 +119,12 @@ class AdvancedCesiumManager {
     }
     
     addCameraControlsUI() {
-        // Create a custom toolbar container if one doesn't exist
-        let toolbar = document.querySelector('.cesium-viewer-toolbar');
-        
-        if (!toolbar) {
-            // Create a floating toolbar for camera controls
-            toolbar = document.createElement('div');
-            toolbar.className = 'cesium-camera-toolbar';
-            toolbar.style.cssText = `
-                position: absolute;
-                top: 10px;
-                right: 10px;
-                z-index: 1000;
-                display: flex;
-                gap: 5px;
-                background: rgba(42, 42, 42, 0.8);
-                padding: 5px;
-                border-radius: 5px;
-            `;
-            
-            // Append to the cesium container
-            const cesiumContainer = document.getElementById('cesium-container');
-            if (cesiumContainer) {
-                cesiumContainer.appendChild(toolbar);
-            } else {
-                // Fallback: append to cesium-map
-                const cesiumMap = document.getElementById('cesium-map');
-                if (cesiumMap) {
-                    cesiumMap.appendChild(toolbar);
-                } else {
-                    console.warn('Could not find container for camera controls toolbar');
-                    return;
-                }
-            }
-        }
+        // Add camera control buttons to the viewer toolbar
+        const toolbar = this.viewer.toolbar;
         
         // Follow Camera Button
         const followButton = document.createElement('button');
         followButton.className = 'cesium-button cesium-toolbar-button';
-        followButton.style.cssText = `
-            background: #444;
-            border: 1px solid #666;
-            color: white;
-            padding: 8px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 14px;
-        `;
         followButton.innerHTML = '<i class="fas fa-video"></i>';
         followButton.title = 'Follow Camera Mode';
         followButton.onclick = () => this.toggleFollowMode();
@@ -180,15 +133,6 @@ class AdvancedCesiumManager {
         // Reset Camera Button
         const resetButton = document.createElement('button');
         resetButton.className = 'cesium-button cesium-toolbar-button';
-        resetButton.style.cssText = `
-            background: #444;
-            border: 1px solid #666;
-            color: white;
-            padding: 8px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 14px;
-        `;
         resetButton.innerHTML = '<i class="fas fa-home"></i>';
         resetButton.title = 'Reset Camera View';
         resetButton.onclick = () => this.resetCamera();
@@ -196,9 +140,39 @@ class AdvancedCesiumManager {
     }
     
     setupCoTWebSocket() {
-        // CoT WebSocket setup - tracks will be managed by dashboard
-        // No direct WebSocket listeners here to avoid conflicts
-        console.log('CoT WebSocket ready for dashboard-managed track updates');
+        // Setup WebSocket for real-time CoT data
+        if (window.socket) {
+            // Listen for regular track updates
+            window.socket.on('track_update', (tracks) => {
+                this.updateUnitsFromCoT(tracks);
+            });
+            
+            // Listen for CoT-specific updates
+            window.socket.on('cot_update', (cotData) => {
+                console.log('Received CoT update:', cotData.length, 'tracks');
+                this.updateUnitsFromCoT(cotData.map(item => item.track_data));
+            });
+            
+            // Handle CoT batch responses
+            window.socket.on('cot_batch', (data) => {
+                console.log('Received CoT batch:', data.track_count, 'tracks');
+            });
+            
+            // Handle CoT heartbeat
+            window.socket.on('cot_heartbeat', (data) => {
+                console.log('CoT heartbeat received');
+            });
+            
+            // Handle CoT errors
+            window.socket.on('cot_error', (error) => {
+                console.error('CoT error:', error);
+            });
+            
+            // Request initial CoT batch
+            window.socket.emit('request_cot_batch');
+        }
+        
+        console.log('CoT WebSocket connection established');
     }
     
     setupClickHandlers() {
@@ -219,31 +193,13 @@ class AdvancedCesiumManager {
     }
     
     updateUnitsFromCoT(tracks) {
-        console.log(`Cesium updateUnitsFromCoT called with ${tracks.length} tracks`);
-        
-        // Keep track of active track IDs for cleanup
-        const activeTrackIds = tracks.map(track => `unit_${track.track_id}`);
-        
         // Update or create unit entities from CoT track data
         tracks.forEach(track => {
-            console.log(`Updating entity unit_${track.track_id} at [${track.longitude}, ${track.latitude}, ${this.getUnitAltitude(track)}]`);
             this.updateUnitEntity(track);
         });
         
         // Remove entities for tracks that no longer exist
-        this.cleanupOldEntities(activeTrackIds);
-        
-        console.log(`Total entities now: ${this.viewer.entities.values.length}`);
-        console.log('Updated 3D Battle View with', tracks.length, 'tracks');
-        
-        // Set battle mode flag for tracking
-        this.battleModeActive = true;
-        
-        // Zoom to show all entities if there are any
-        if (tracks.length > 0) {
-            this.viewer.zoomTo(this.viewer.entities);
-            console.log('Zoomed to show all entities');
-        }
+        this.cleanupOldEntities(tracks);
     }
     
     updateUnitEntity(track) {
@@ -260,12 +216,10 @@ class AdvancedCesiumManager {
             // Create new unit entity
             entity = this.createUnitEntity(track, position);
             this.unitEntities.set(entityId, entity);
-            console.log(`Created new entity: ${entityId}`);
         } else {
             // Update existing entity position
             entity.position = position;
             entity.orientation = this.calculateOrientation(track);
-            console.log(`Updated existing entity: ${entityId}`);
         }
         
         // Update trail
@@ -475,13 +429,12 @@ class AdvancedCesiumManager {
         }
     }
     
-    cleanupOldEntities(activeTrackIds) {
-        // activeTrackIds is already an array of entity IDs like ['unit_TRK1000', 'unit_TRK1001', ...]
-        const activeIds = new Set(activeTrackIds);
+    cleanupOldEntities(activeTracks) {
+        const activeTrackIds = new Set(activeTracks.map(t => `unit_${t.track_id}`));
         const entitiesToRemove = [];
         
         this.unitEntities.forEach((entity, entityId) => {
-            if (!activeIds.has(entityId)) {
+            if (!activeTrackIds.has(entityId)) {
                 entitiesToRemove.push(entityId);
             }
         });
@@ -650,35 +603,5 @@ class AdvancedCesiumManager {
     }
 }
 
-// Initialize when DOM is loaded - only if not already initialized
-if (!window.advancedCesium) {
-    document.addEventListener('DOMContentLoaded', function() {
-        if (!window.advancedCesium) {
-            try {
-                // Only initialize if cesium container exists
-                const container = document.getElementById('cesium-container') || document.getElementById('cesium-map');
-                if (container) {
-                    window.advancedCesium = new AdvancedCesiumManager();
-                    console.log('Advanced Cesium Manager initialized');
-                } else {
-                    console.log('Cesium container not found, waiting for Battle Mode activation');
-                }
-            } catch (error) {
-                console.error('Error initializing Advanced Cesium Manager:', error);
-            }
-        }
-    });
-    
-    // Also try to initialize if DOM is already loaded
-    if (document.readyState !== 'loading' && !window.advancedCesium) {
-        try {
-            const container = document.getElementById('cesium-container') || document.getElementById('cesium-map');
-            if (container) {
-                window.advancedCesium = new AdvancedCesiumManager();
-                console.log('Advanced Cesium Manager initialized (DOM already loaded)');
-            }
-        } catch (error) {
-            console.error('Error initializing Advanced Cesium Manager:', error);
-        }
-    }
-}
+// Global instance
+window.advancedCesium = new AdvancedCesiumManager();

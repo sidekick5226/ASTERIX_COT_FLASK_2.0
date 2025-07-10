@@ -18,44 +18,28 @@ class WebSocketManager {
     
     connect() {
         try {
-            // Prevent multiple connections
-            if (this.socket && this.socket.connected) {
-                return;
-            }
-            
-            this.socket = io({
-                timeout: 5000,
-                reconnection: false, // We'll handle reconnection manually
-                forceNew: true
-            });
+            this.socket = io();
             
             this.socket.on('connect', () => {
                 console.log('Connected to surveillance system');
                 this.isConnected = true;
                 this.reconnectAttempts = 0;
                 this.updateConnectionStatus(true);
-                this.requestTrackUpdate();
             });
             
-            this.socket.on('disconnect', (reason) => {
-                console.log('Disconnected from surveillance system:', reason);
+            this.socket.on('disconnect', () => {
+                console.log('Disconnected from surveillance system');
                 this.isConnected = false;
                 this.updateConnectionStatus(false);
-                // Only attempt reconnect for certain disconnect reasons
-                if (reason === 'io server disconnect' || reason === 'io client disconnect') {
-                    // Server-initiated disconnect, try to reconnect
-                    this.attemptReconnect();
-                }
+                this.attemptReconnect();
             });
             
             this.socket.on('connect_error', (error) => {
                 // Throttle error messages to prevent spam
-                const now = Date.now();
-                if (!this.lastErrorTime || now - this.lastErrorTime > 10000) {
-                    console.error('Connection error:', error || 'Unknown connection error');
-                    this.lastErrorTime = now;
+                if (!this.lastErrorTime || Date.now() - this.lastErrorTime > 10000) {
+                    console.error('Connection error:', error);
+                    this.lastErrorTime = Date.now();
                 }
-                this.isConnected = false;
                 this.updateConnectionStatus(false);
                 this.attemptReconnect();
             });
@@ -91,26 +75,19 @@ class WebSocketManager {
             // Only log once when max attempts reached, don't spam console
             if (this.reconnectAttempts === this.maxReconnectAttempts) {
                 console.error('Max reconnection attempts reached');
-                this.updateConnectionStatus(false, 'Connection failed - check server status');
             }
             return;
         }
         
         this.reconnectAttempts++;
-        // Reduce console spam - only log first 2 attempts
+        // Reduce console spam
         if (this.reconnectAttempts <= 2) {
             console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
         }
         
-        // Clean up existing socket before reconnecting
-        if (this.socket) {
-            this.socket.disconnect();
-            this.socket = null;
-        }
-        
         setTimeout(() => {
             this.connect();
-        }, this.reconnectDelay * Math.min(this.reconnectAttempts, 3)); // Cap delay at 3x base
+        }, this.reconnectDelay * Math.min(this.reconnectAttempts, 3)); // Cap delay
     }
     
     requestTrackUpdate() {
@@ -122,19 +99,16 @@ class WebSocketManager {
     handleTrackUpdate(tracks) {
         try {
             // Update dashboard if available
-            if (window.dashboard && typeof window.dashboard.onTrackUpdate === 'function') {
+            if (window.dashboard) {
                 window.dashboard.onTrackUpdate(tracks);
             }
             
             // Update map if available
-            if (window.mapManager && typeof window.mapManager.updateTracks === 'function') {
+            if (window.mapManager) {
                 window.mapManager.updateTracks(tracks);
             }
             
-            // Only log if we have a reasonable number of tracks to avoid spam
-            if (tracks && tracks.length > 0) {
-                console.log(`Updating ${tracks.length} tracks in ${window.mapManager && window.mapManager.is3DMode ? '3D Battle' : '2D Standard'} view`);
-            }
+            console.log(`Updated ${tracks.length} tracks`);
         } catch (error) {
             console.error('Error handling track update:', error);
         }
@@ -164,7 +138,7 @@ class WebSocketManager {
         }
     }
     
-    updateConnectionStatus(connected, message = null) {
+    updateConnectionStatus(connected) {
         // Update connection indicator in the UI
         let indicator = document.getElementById('connection-indicator');
         
@@ -233,26 +207,17 @@ class WebSocketManager {
     }
 }
 
-// Initialize WebSocket manager when DOM is loaded - ensure single instance
-if (!window.wsManager) {
-    document.addEventListener('DOMContentLoaded', () => {
-        if (!window.wsManager) {
-            window.wsManager = new WebSocketManager();
-            
-            // Periodically request updates if live demo is active
-            setInterval(() => {
-                if (window.dashboard && window.dashboard.isLiveDemo && window.wsManager.isSocketConnected()) {
-                    window.wsManager.requestTrackUpdate();
-                }
-            }, 5000); // Request updates every 5 seconds during live demo
-        }
-    });
+// Initialize WebSocket manager when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    window.wsManager = new WebSocketManager();
     
-    // Also initialize if DOM is already loaded
-    if (document.readyState !== 'loading' && !window.wsManager) {
-        window.wsManager = new WebSocketManager();
-    }
-}
+    // Periodically request updates if live demo is active
+    setInterval(() => {
+        if (window.dashboard && window.dashboard.isLiveDemo && window.wsManager.isSocketConnected()) {
+            window.wsManager.requestTrackUpdate();
+        }
+    }, 5000); // Request updates every 5 seconds during live demo
+});
 
 // Cleanup on page unload
 window.addEventListener('beforeunload', () => {

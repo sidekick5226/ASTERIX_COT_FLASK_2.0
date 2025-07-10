@@ -441,17 +441,39 @@ class SurveillanceDashboard {
     toggleBattleMode() {
         this.isBattleMode = !this.isBattleMode;
         const btn = document.getElementById('battle-mode-btn');
+        const tracksPanel = document.getElementById('active-tracks-panel');
+        const mapContainer = document.getElementById('map-container');
         
         if (this.isBattleMode) {
             btn.innerHTML = '<i class="fas fa-globe"></i> Standard View';
             btn.classList.add('active');
+            
+            // Hide Active Tracks Panel and make map full width
+            if (tracksPanel) {
+                tracksPanel.classList.add('hidden');
+            }
+            if (mapContainer) {
+                mapContainer.classList.remove('flex-1');
+                mapContainer.classList.add('w-full');
+            }
+            
             if (window.mapManager) {
                 window.mapManager.switchTo3D();
             }
-            this.showNotification('Battle Mode activated', 'success');
+            this.showNotification('Battle Mode activated - Full screen 3D view', 'success');
         } else {
-            btn.innerHTML = '<i class="fas fa-fighter-jet"></i> Battle View';
+            btn.innerHTML = '<i class="fas fa-globe-americas mr-1"></i> Battle View';
             btn.classList.remove('active');
+            
+            // Show Active Tracks Panel and restore normal layout
+            if (tracksPanel) {
+                tracksPanel.classList.remove('hidden');
+            }
+            if (mapContainer) {
+                mapContainer.classList.remove('w-full');
+                mapContainer.classList.add('flex-1');
+            }
+            
             if (window.mapManager) {
                 window.mapManager.switchTo2D();
             }

@@ -11,11 +11,13 @@ import time
 from asterix_processor import AsterixProcessor
 from cot_converter import CoTConverter
 from klv_converter import KLVConverter
+from cot_processor import CoTProcessor
 
 # Initialize processors
 asterix_processor = AsterixProcessor()
 cot_converter = CoTConverter()
 klv_converter = KLVConverter()
+cot_processor = CoTProcessor()
 
 @app.route('/')
 def dashboard():
@@ -245,6 +247,76 @@ def startup():
     thread = threading.Thread(target=update_tracks_realtime)
     thread.daemon = True
     thread.start()
+
+# CoT WebSocket endpoints
+@socketio.on('request_cot_batch')
+def handle_cot_batch_request():
+    """Handle request for batch CoT data"""
+    try:
+        tracks = Track.query.filter_by(status='Active').all()
+        track_data = [track.to_dict() for track in tracks]
+        
+        # Generate batch CoT XML
+        batch_cot = cot_processor.batch_tracks_to_cot(track_data)
+        emit('cot_batch', {'batch_cot_xml': batch_cot, 'track_count': len(track_data)})
+    except Exception as e:
+        emit('cot_error', {'error': str(e)})
+
+@socketio.on('request_cot_heartbeat')
+def handle_cot_heartbeat():
+    """Handle CoT heartbeat request"""
+    try:
+        heartbeat = cot_processor.create_heartbeat_message()
+        emit('cot_heartbeat', {'heartbeat_xml': heartbeat})
+    except Exception as e:
+        emit('cot_error', {'error': str(e)})
+
+# API endpoint for CoT data
+@app.route('/api/cot/tracks')
+def get_cot_tracks():
+    """Get all tracks in CoT XML format"""
+    try:
+        tracks = Track.query.filter_by(status='Active').all()
+        track_data = [track.to_dict() for track in tracks]
+        
+        cot_tracks = []
+        for track in track_data:
+            cot_xml = cot_processor.track_to_cot_xml(track)
+            cot_tracks.append({
+                'track_id': track['track_id'],
+                'cot_xml': cot_xml
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'track_count': len(cot_tracks),
+            'cot_tracks': cot_tracks
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@app.route('/api/cot/batch')
+def get_cot_batch():
+    """Get batch CoT XML for all active tracks"""
+    try:
+        tracks = Track.query.filter_by(status='Active').all()
+        track_data = [track.to_dict() for track in tracks]
+        
+        batch_xml = cot_processor.batch_tracks_to_cot(track_data)
+        
+        return jsonify({
+            'status': 'success',
+            'track_count': len(track_data),
+            'batch_cot_xml': batch_xml
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
 
 # Initialize startup tasks when the module is imported
 if not hasattr(app, '_startup_initialized'):

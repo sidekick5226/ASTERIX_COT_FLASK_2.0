@@ -96,5 +96,16 @@ Preferred communication style: Simple, everyday language.
 - **Live Updates**: Implemented continuous track updates every second for real-time surveillance
 - **Battle View 3D**: Fixed altitude positioning with realistic defaults (Aircraft: 10,000ft, Vessels: sea level, Vehicles: 100ft)
 - **Selective Clearing**: "Stop & Clear" now preserves Event Log while clearing Active Tracks and Event Monitor
+- **Responsive Interface**: Migrated from Bootstrap to Tailwind CSS with mobile-compatible sidebar and adaptive layouts
+- **Advanced 3D CesiumJS**: Implemented comprehensive 3D mapping with quantized-mesh terrain, 3D buildings, and glTF unit models
+- **CoT Integration**: Added CoT (Cursor-on-Target) XML processor for military standard data exchange and real-time WebSocket broadcasting
+- **Camera Follow System**: Implemented chase cam, first-person, and orbital camera modes for tactical unit following
 
-The application is designed as a real-time surveillance monitoring system with military/emergency response integration capabilities, supporting multiple data formats and providing both 2D and 3D visualization options.
+### Advanced 3D Features
+- **Terrain**: Quantized-mesh tiles with local server capability (currently using Cesium World Terrain as fallback)
+- **Buildings**: 3D building models from OSM/LiDAR data (currently using Cesium OSM Buildings as fallback)
+- **Units**: glTF model positioning via CoT lat/lon/heading coordinates with realistic altitude defaults
+- **Follow Cameras**: Chase view, first-person drone, and orbital camera modes with smooth transitions
+- **CoT Broadcasting**: Real-time WebSocket CoT XML updates for ASTERIX-to-CoT data conversion
+
+The application now supports dual map modes (2D Leaflet standard and 3D CesiumJS advanced) with full responsive design adaptable to any screen size, making it suitable for both desktop surveillance operations and mobile tactical use.

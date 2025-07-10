@@ -24,6 +24,9 @@ class SurveillanceDashboard {
         document.getElementById('stop-demo-btn').addEventListener('click', () => this.stopLiveDemo());
         document.getElementById('battle-mode-btn').addEventListener('click', () => this.toggleBattleMode());
         
+        // Add advanced 3D mode with double-click
+        document.getElementById('battle-mode-btn').addEventListener('dblclick', () => this.toggleAdvanced3DMode());
+        
         // Filters
         document.getElementById('track-type-filter').addEventListener('change', (e) => this.filterTracks(e.target.value));
         document.getElementById('search-input').addEventListener('input', (e) => this.searchTracks(e.target.value));
@@ -453,6 +456,20 @@ class SurveillanceDashboard {
                 window.mapManager.switchTo2D();
             }
             this.showNotification('Standard view activated', 'info');
+        }
+    }
+    
+    toggleAdvanced3DMode() {
+        if (window.advancedCesium) {
+            // Switch to advanced 3D mode
+            window.advancedCesium.enable3DMode();
+            this.showNotification('Advanced 3D Mode: Quantized terrain, 3D buildings, glTF units, follow cam enabled', 'success');
+            
+            const btn = document.getElementById('battle-mode-btn');
+            btn.innerHTML = '<i class="fas fa-cube"></i> Advanced 3D';
+            btn.classList.add('advanced-3d');
+        } else {
+            this.showNotification('Advanced 3D mode not available', 'error');
         }
     }
     

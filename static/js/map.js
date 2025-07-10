@@ -17,6 +17,11 @@ class MapManager {
         this.initCesiumMap();
     }
     
+    // Alias method for compatibility
+    initMaps() {
+        this.init();
+    }
+    
     initLeafletMap() {
         // Initialize Leaflet map (2D)
         this.leafletMap = L.map('leaflet-map', {

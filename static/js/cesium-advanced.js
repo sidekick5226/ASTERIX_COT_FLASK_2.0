@@ -170,6 +170,11 @@ class AdvancedCesiumManager {
             
             // Request initial CoT batch
             window.socket.emit('request_cot_batch');
+            
+            // Set up periodic CoT heartbeat
+            setInterval(() => {
+                window.socket.emit('request_cot_heartbeat');
+            }, 30000); // Every 30 seconds
         }
         
         console.log('CoT WebSocket connection established');

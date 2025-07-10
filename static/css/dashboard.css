@@ -20,8 +20,8 @@ body {
 }
 
 .sidebar-header {
-    padding: 20px;
-    border-bottom: 1px solid #3b4168;
+    padding: 20px 20px 19px 20px;
+    border-bottom: 2px solid #3b4168;
 }
 
 .sidebar-header h3 {

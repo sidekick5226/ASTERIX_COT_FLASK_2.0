@@ -493,10 +493,18 @@ class AdvancedCesiumManager {
     }
 
     showFollowCameraOption(entity) {
-        // Create follow camera prompt (could be replaced with UI buttons)
-        const followOption = confirm(`Follow ${entity.name} with camera?`);
-        if (followOption) {
+        // Check if we're in Battle View mode - if so, skip the popup and directly start following
+        const isBattleMode = window.dashboard && window.dashboard.isBattleMode;
+        
+        if (isBattleMode) {
+            // In Battle View, directly start following without popup for immersive experience
             this.startFollowCamera(entity);
+        } else {
+            // In standard view, show confirmation popup
+            const followOption = confirm(`Follow ${entity.name} with camera?`);
+            if (followOption) {
+                this.startFollowCamera(entity);
+            }
         }
     }
 

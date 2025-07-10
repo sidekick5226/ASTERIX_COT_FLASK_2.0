@@ -37,8 +37,8 @@ class AdvancedCesiumManager {
             timeline: false,
             fullscreenButton: false,
             vrButton: false,
-            infoBox: false,        // Disable popup info box
-            selectionIndicator: false,  // Disable selection indicator
+            infoBox: true,        // Keep popup info box for track details
+            selectionIndicator: true,  // Keep selection indicator
             shouldAnimate: true,
             // Remove default imagery provider - we'll add our own
             imageryProvider: false
@@ -190,33 +190,22 @@ class AdvancedCesiumManager {
     }
     
     setupClickHandlers() {
-        // Handle click events without showing popups
-        this.viewer.cesiumWidget.canvas.addEventListener('click', (event) => {
-            const pickedEntity = this.viewer.scene.pick(event);
-            if (pickedEntity && pickedEntity.id && this.unitEntities.has(pickedEntity.id.id)) {
-                // Simply select the unit without showing popup
-                this.selectUnit(pickedEntity.id);
+        // Handle entity selection for normal info popup behavior
+        this.viewer.selectedEntityChanged.addEventListener((selectedEntity) => {
+            if (selectedEntity && this.unitEntities.has(selectedEntity.id)) {
+                console.log('Unit selected:', selectedEntity.id);
+                // Entity info box will show automatically - no custom handling needed
             }
         });
         
-        // Handle double-click for follow mode
+        // Handle double-click for follow mode (no confirmation popup)
         this.viewer.cesiumWidget.canvas.addEventListener('dblclick', (event) => {
-            const pickedEntity = this.viewer.scene.pick(event);
+            const pickedEntity = this.viewer.scene.pick(event.position);
             if (pickedEntity && pickedEntity.id && this.unitEntities.has(pickedEntity.id.id)) {
+                // Start following immediately without confirmation dialog
                 this.startFollowCamera(pickedEntity.id);
             }
         });
-        
-        // Disable the default Cesium entity selection behavior to prevent popups
-        this.viewer.cesiumWidget.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_CLICK);
-        this.viewer.cesiumWidget.screenSpaceEventHandler.setInputAction((event) => {
-            const pickedEntity = this.viewer.scene.pick(event.position);
-            if (pickedEntity && pickedEntity.id && this.unitEntities.has(pickedEntity.id.id)) {
-                // Silent selection - no popup, just console log
-                console.log('Unit selected:', pickedEntity.id.id);
-                this.selectUnit(pickedEntity.id);
-            }
-        }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
     }
     
     updateUnitsFromCoT(tracks) {
@@ -492,14 +481,8 @@ class AdvancedCesiumManager {
             entity.model.silhouetteColor = Cesium.Color.YELLOW;
         }
         
-        // Show follow camera option
-        this.showFollowCameraOption(entity);
-    }
-    
-    showFollowCameraOption(entity) {
-        // Silently start following without popup - double-click to follow
-        // No popup needed in battle view mode for clean experience
-        this.startFollowCamera(entity);
+        // Note: No automatic camera follow on single click
+        // User must double-click to follow
     }
     
     startFollowCamera(entity) {

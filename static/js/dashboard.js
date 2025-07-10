@@ -36,12 +36,6 @@ class SurveillanceDashboard {
             this.onTrackUpdate(tracks);
         });
         
-        // Handle real-time monitor events (for Event Monitor)
-        this.socket.on('monitor_events', (events) => {
-            console.log('Received monitor_events:', events);
-            this.onMonitorEvents(events);
-        });
-        
         // Handle connection status
         this.socket.on('status', (data) => {
             console.log('Status update:', data.msg);
@@ -141,14 +135,15 @@ class SurveillanceDashboard {
     }
     
     startPeriodicUpdates() {
-        // Check for track updates every second
+        // Check for track updates and monitor events every 2 seconds
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
         }
         
         this.updateInterval = setInterval(async () => {
-            await this.loadTracks(); // Always check for updates
-        }, 1000);
+            await this.loadTracks(); // Always check for track updates
+            await this.loadMonitorEvents(); // Always check for monitor events
+        }, 2000);
     }
     
     stopPeriodicUpdates() {
@@ -306,14 +301,8 @@ class SurveillanceDashboard {
     
     async refreshEvents() {
         try {
-            const response = await fetch('/api/events');
-            const data = await response.json();
-            this.events = data.events || [];
-            
-            // Update Event Monitor display
-            this.updateEventsDisplay();
-            
-            // Also load Event Log if on that tab  
+            // Refresh both monitor events and event log
+            await this.loadMonitorEvents();
             await this.loadEventLog();
             
             this.showNotification('Events refreshed', 'success');
@@ -373,21 +362,29 @@ class SurveillanceDashboard {
         console.log('Added', tbody.children.length, 'rows to events table');
     }
     
-    onMonitorEvents(events) {
-        console.log('Received monitor events:', events);
-        
-        // Add new monitor events to the beginning of the array
-        this.monitorEvents.push(...events);
-        
-        // Keep only the latest 200 monitor events to prevent memory issues
-        if (this.monitorEvents.length > 200) {
-            this.monitorEvents = this.monitorEvents.slice(-200);
+    async loadMonitorEvents() {
+        try {
+            const response = await fetch('/api/monitor-events');
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                // Replace monitor events with current real-time data
+                this.monitorEvents = data.events || [];
+                
+                // Update the Event Monitor display
+                this.updateEventsDisplay();
+                
+                console.log(`Loaded ${this.monitorEvents.length} monitor events`);
+            }
+        } catch (error) {
+            console.error('Error loading monitor events:', error);
         }
-        
-        // Update the Event Monitor display immediately
-        this.updateEventsDisplay();
-        
-        console.log(`Total monitor events: ${this.monitorEvents.length}`);
+    }
+    
+    onMonitorEvents(events) {
+        // This method is kept for compatibility but no longer used
+        // Monitor events are now loaded via polling
+        console.log('Legacy monitor events handler called');
     }
     
     async loadEventLog() {

@@ -86,7 +86,7 @@ def generate_tracks():
 
 @app.route('/api/events')
 def get_events():
-    """Get all events"""
+    """Get all events for Event Log"""
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 50, type=int)
     
@@ -100,6 +100,40 @@ def get_events():
         'pages': events.pages,
         'current_page': page
     })
+
+@app.route('/api/monitor-events')
+def get_monitor_events():
+    """Get real-time monitor events for Event Monitor"""
+    try:
+        # Get active tracks and generate current monitor events
+        tracks = Track.query.filter_by(status='Active').all()
+        monitor_events = []
+        
+        from datetime import datetime
+        current_time = datetime.utcnow().isoformat()
+        
+        for track in tracks:
+            monitor_event = {
+                'track_id': track.track_id,
+                'event_type': 'Track Update',
+                'description': f"Track {track.track_id} - {track.track_type} at {track.latitude:.4f}, {track.longitude:.4f}, Speed: {track.speed:.1f} knots",
+                'timestamp': current_time,
+                'is_realtime': True
+            }
+            monitor_events.append(monitor_event)
+        
+        return jsonify({
+            'status': 'success',
+            'events': monitor_events,
+            'count': len(monitor_events)
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'events': [],
+            'count': 0
+        }), 500
 
 @app.route('/api/network-config', methods=['GET', 'POST'])
 def network_config():

@@ -26,9 +26,12 @@ class SurveillanceDashboard {
 
     init() {
         this.bindEvents();
+        this.bindMultiSelectEvents(); // Bind shift+click functionality
+        this.bindBattleGroupEvents(); // Bind battle group dialog events
         this.loadInitialData();
         this.setupTabHandlers();
         this.startPeriodicUpdates(); // Always check for updates every second
+        console.log('Dashboard initialized with multi-select functionality');
     }
 
     setupSocketHandlers() {
@@ -79,12 +82,6 @@ class SurveillanceDashboard {
 
         // Network configuration
         this.bindNetworkConfigEvents();
-        
-        // Battle Group functionality
-        this.bindBattleGroupEvents();
-        
-        // Global shift key tracking for multi-selection
-        this.bindMultiSelectEvents();
     }
 
     bindNetworkConfigEvents() {
@@ -237,6 +234,7 @@ class SurveillanceDashboard {
         });
 
         document.getElementById('total-tracks').textContent = this.tracks.size;
+        console.log(`Updated tracks display with ${this.tracks.size} tracks`);
     }
 
     createTrackRow(track) {
@@ -768,9 +766,12 @@ class SurveillanceDashboard {
     
     // Multi-track selection methods
     bindMultiSelectEvents() {
+        console.log('Binding multi-select events...');
+        
         // Track shift key state
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Shift') {
+                console.log('Shift key pressed - entering multi-select mode');
                 this.isMultiSelecting = true;
                 document.body.classList.add('multi-select-mode');
             }
@@ -778,11 +779,13 @@ class SurveillanceDashboard {
 
         document.addEventListener('keyup', (e) => {
             if (e.key === 'Shift') {
+                console.log('Shift key released - exiting multi-select mode');
                 this.isMultiSelecting = false;
                 document.body.classList.remove('multi-select-mode');
                 
                 // Show battle group dialog if we have multiple tracks selected
                 if (this.selectedTracks.size > 1) {
+                    console.log(`Showing battle group dialog for ${this.selectedTracks.size} selected tracks`);
                     this.showBattleGroupDialog();
                 }
             }
@@ -790,14 +793,16 @@ class SurveillanceDashboard {
     }
 
     handleTrackRowClick(event, trackId) {
+        console.log(`Track row clicked: ${trackId}, multi-selecting: ${this.isMultiSelecting}`);
+        
         if (this.isMultiSelecting) {
             // Multi-select mode
             if (this.selectedTracks.has(trackId)) {
                 this.selectedTracks.delete(trackId);
-                console.log(`Deselected track ${trackId}`);
+                console.log(`Deselected track ${trackId}, total selected: ${this.selectedTracks.size}`);
             } else {
                 this.selectedTracks.add(trackId);
-                console.log(`Selected track ${trackId}`);
+                console.log(`Selected track ${trackId}, total selected: ${this.selectedTracks.size}`);
             }
             
             // Update the track display to show selection
@@ -815,6 +820,7 @@ class SurveillanceDashboard {
             
             // Focus on single track
             this.trackOnMap(trackId);
+            console.log(`Single track selected: ${trackId}`);
         }
     }
 

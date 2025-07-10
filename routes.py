@@ -158,23 +158,24 @@ def generate_simulated_track_data():
     """Generate simulated track data for demonstration"""
     track_types = ['Aircraft', 'Vessel', 'Vehicle']
     
-    # Create some initial tracks if none exist
-    if Track.query.count() == 0:
-        for i in range(10):
-            track = Track(
-                track_id=f"TRK{1000 + i}",
-                callsign=f"CALL{i:03d}",
-                track_type=random.choice(track_types),
-                latitude=40.0 + random.uniform(-2, 2),
-                longitude=-74.0 + random.uniform(-2, 2),
-                altitude=random.uniform(100, 40000) if random.choice(track_types) == 'Aircraft' else None,
-                heading=random.uniform(0, 360),
-                speed=random.uniform(50, 500),
-                status='Active'
-            )
-            db.session.add(track)
-        
-        db.session.commit()
+    # Always clear existing tracks first, then create new ones
+    Track.query.delete()
+    
+    for i in range(10):
+        track = Track(
+            track_id=f"TRK{1000 + i}",
+            callsign=f"CALL{i:03d}",
+            track_type=random.choice(track_types),
+            latitude=40.0 + random.uniform(-80, 80),  # Global spread
+            longitude=-74.0 + random.uniform(-180, 180),  # Global spread
+            altitude=random.uniform(100, 40000) if random.choice(track_types) == 'Aircraft' else None,
+            heading=random.uniform(0, 360),
+            speed=random.uniform(50, 500),
+            status='Active'
+        )
+        db.session.add(track)
+    
+    db.session.commit()
 
 def update_tracks_realtime():
     """Update tracks in real-time and emit to clients"""
@@ -251,29 +252,45 @@ def start_surveillance():
     global tracking_thread, tracking_active
     
     if not tracking_active:
-        # Generate initial tracks only when surveillance starts
-        generate_simulated_track_data()
-        
-        # Start real-time updates
-        tracking_active = True
-        tracking_thread = threading.Thread(target=update_tracks_realtime)
-        tracking_thread.daemon = True
-        tracking_thread.start()
-        
-        return True
+        try:
+            # Generate initial tracks only when surveillance starts
+            generate_simulated_track_data()
+            
+            # Start real-time updates
+            tracking_active = True
+            tracking_thread = threading.Thread(target=update_tracks_realtime)
+            tracking_thread.daemon = True
+            tracking_thread.start()
+            
+            return True
+        except Exception as e:
+            print(f"Error starting surveillance: {e}")
+            tracking_active = False
+            return False
     return False
 
 def stop_surveillance():
     """Stop surveillance tracking"""
-    global tracking_active
+    global tracking_active, tracking_thread
+    
+    # Stop tracking first
     tracking_active = False
+    
+    # Wait a moment for the thread to finish
+    if tracking_thread and tracking_thread.is_alive():
+        time.sleep(0.1)
     
     # Clear all tracks when stopping
     try:
         Track.query.delete()
         db.session.commit()
+        
+        # Emit empty track update immediately
+        socketio.emit('track_update', [])
+        
         return True
     except Exception as e:
+        print(f"Error stopping surveillance: {e}")
         db.session.rollback()
         return False
 

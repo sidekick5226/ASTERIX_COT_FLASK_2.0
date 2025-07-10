@@ -398,47 +398,64 @@ class SurveillanceDashboard {
     }
     
     startLiveDemo() {
+        // Immediately update UI for responsiveness
         this.isLiveDemo = true;
-        document.getElementById('start-demo-btn').disabled = true;
-        document.getElementById('stop-demo-btn').disabled = false;
+        const startBtn = document.getElementById('start-demo-btn');
+        const stopBtn = document.getElementById('stop-demo-btn');
+        
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        startBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting...';
         
         // Start surveillance tracking
         fetch('/api/surveillance/start', { method: 'POST' })
             .then(response => response.json())
             .then(data => {
                 console.log('Surveillance started:', data);
+                startBtn.innerHTML = '<i class="fas fa-play"></i> Start Surveillance';
                 this.showNotification('Surveillance started - Live tracking active', 'success');
             })
             .catch(error => {
                 console.error('Error starting surveillance:', error);
+                startBtn.innerHTML = '<i class="fas fa-play"></i> Start Surveillance';
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                this.isLiveDemo = false;
                 this.showNotification('Error starting surveillance', 'error');
             });
     }
     
     stopLiveDemo() {
+        // Immediately update UI for responsiveness
+        const startBtn = document.getElementById('start-demo-btn');
+        const stopBtn = document.getElementById('stop-demo-btn');
+        
         this.isLiveDemo = false;
-        document.getElementById('start-demo-btn').disabled = false;
-        document.getElementById('stop-demo-btn').disabled = true;
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        stopBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Stopping...';
+        
+        // Immediately clear UI for responsive feel
+        this.tracks.clear();
+        this.updateTracksDisplay();
+        this.updateTrackCounts();
+        
+        // Clear tracks from map immediately
+        if (window.mapManager) {
+            window.mapManager.clearAllTracks();
+        }
         
         // Stop surveillance tracking
         fetch('/api/surveillance/stop', { method: 'POST' })
             .then(response => response.json())
             .then(data => {
                 console.log('Surveillance stopped:', data);
+                stopBtn.innerHTML = '<i class="fas fa-stop"></i> Stop & Clear';
                 this.showNotification('Surveillance stopped - All tracks cleared', 'info');
-                
-                // Clear all tracks from display
-                this.tracks.clear();
-                this.updateTracksDisplay();
-                this.updateTrackCounts();
-                
-                // Clear tracks from map
-                if (window.mapManager) {
-                    window.mapManager.clearAllTracks();
-                }
             })
             .catch(error => {
                 console.error('Error stopping surveillance:', error);
+                stopBtn.innerHTML = '<i class="fas fa-stop"></i> Stop & Clear';
                 this.showNotification('Error stopping surveillance', 'error');
             });
     }

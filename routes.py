@@ -178,7 +178,9 @@ def generate_simulated_track_data():
 
 def update_tracks_realtime():
     """Update tracks in real-time and emit to clients"""
-    while True:
+    global tracking_active
+    
+    while tracking_active:
         try:
             with app.app_context():
                 tracks = Track.query.filter_by(status='Active').all()
@@ -238,15 +240,42 @@ def update_tracks_realtime():
         except Exception as e:
             print(f"Error updating tracks: {e}")
         
-        time.sleep(2)  # Update every 2 seconds
+        time.sleep(1)  # Update every second for real-time feel
 
-# Start background thread for real-time updates
-def startup():
-    """Initialize application startup tasks"""
-    generate_simulated_track_data()
-    thread = threading.Thread(target=update_tracks_realtime)
-    thread.daemon = True
-    thread.start()
+# Background thread management
+tracking_thread = None
+tracking_active = False
+
+def start_surveillance():
+    """Start surveillance tracking and real-time updates"""
+    global tracking_thread, tracking_active
+    
+    if not tracking_active:
+        # Generate initial tracks only when surveillance starts
+        generate_simulated_track_data()
+        
+        # Start real-time updates
+        tracking_active = True
+        tracking_thread = threading.Thread(target=update_tracks_realtime)
+        tracking_thread.daemon = True
+        tracking_thread.start()
+        
+        return True
+    return False
+
+def stop_surveillance():
+    """Stop surveillance tracking"""
+    global tracking_active
+    tracking_active = False
+    
+    # Clear all tracks when stopping
+    try:
+        Track.query.delete()
+        db.session.commit()
+        return True
+    except Exception as e:
+        db.session.rollback()
+        return False
 
 # CoT WebSocket endpoints
 @socketio.on('request_cot_batch')
@@ -318,8 +347,29 @@ def get_cot_batch():
             'message': str(e)
         }), 500
 
-# Initialize startup tasks when the module is imported
-if not hasattr(app, '_startup_initialized'):
-    app._startup_initialized = True
-    with app.app_context():
-        startup()
+# API endpoints for surveillance control
+@app.route('/api/surveillance/start', methods=['POST'])
+def start_surveillance_api():
+    """Start surveillance tracking"""
+    if start_surveillance():
+        return jsonify({
+            'status': 'success',
+            'message': 'Surveillance started'
+        })
+    return jsonify({
+        'status': 'info',
+        'message': 'Surveillance already running'
+    })
+
+@app.route('/api/surveillance/stop', methods=['POST'])
+def stop_surveillance_api():
+    """Stop surveillance tracking"""
+    if stop_surveillance():
+        return jsonify({
+            'status': 'success',
+            'message': 'Surveillance stopped and tracks cleared'
+        })
+    return jsonify({
+        'status': 'error',
+        'message': 'Error stopping surveillance'
+    })

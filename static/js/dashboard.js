@@ -62,8 +62,13 @@ class SurveillanceDashboard {
     
     async loadInitialData() {
         try {
-            await this.loadTracks();
+            // Only load network config on startup, not tracks
             await this.loadNetworkConfig();
+            
+            // Initialize empty tracks display
+            this.tracks.clear();
+            this.updateTracksDisplay();
+            this.updateTrackCounts();
         } catch (error) {
             console.error('Error loading initial data:', error);
             // Don't show popup notification to prevent spam
@@ -397,16 +402,16 @@ class SurveillanceDashboard {
         document.getElementById('start-demo-btn').disabled = true;
         document.getElementById('stop-demo-btn').disabled = false;
         
-        // Generate new simulated tracks
-        fetch('/api/tracks/generate', { method: 'POST' })
+        // Start surveillance tracking
+        fetch('/api/surveillance/start', { method: 'POST' })
             .then(response => response.json())
             .then(data => {
-                console.log('Generated tracks:', data);
-                this.showNotification('Live surveillance demo started - New tracks generated', 'success');
+                console.log('Surveillance started:', data);
+                this.showNotification('Surveillance started - Live tracking active', 'success');
             })
             .catch(error => {
-                console.error('Error generating tracks:', error);
-                this.showNotification('Live demo started', 'success');
+                console.error('Error starting surveillance:', error);
+                this.showNotification('Error starting surveillance', 'error');
             });
     }
     
@@ -415,27 +420,27 @@ class SurveillanceDashboard {
         document.getElementById('start-demo-btn').disabled = false;
         document.getElementById('stop-demo-btn').disabled = true;
         
-        // Clear all tracks from display
-        this.tracks.clear();
-        this.updateTracksDisplay();
-        this.updateTrackCounts();
-        
-        // Clear tracks from map
-        if (window.mapManager) {
-            window.mapManager.clearAllTracks();
-        }
-        
-        // Send request to server to clear tracks
-        fetch('/api/tracks/clear', { method: 'POST' })
+        // Stop surveillance tracking
+        fetch('/api/surveillance/stop', { method: 'POST' })
             .then(response => response.json())
             .then(data => {
-                console.log('Tracks cleared:', data);
+                console.log('Surveillance stopped:', data);
+                this.showNotification('Surveillance stopped - All tracks cleared', 'info');
+                
+                // Clear all tracks from display
+                this.tracks.clear();
+                this.updateTracksDisplay();
+                this.updateTrackCounts();
+                
+                // Clear tracks from map
+                if (window.mapManager) {
+                    window.mapManager.clearAllTracks();
+                }
             })
             .catch(error => {
-                console.error('Error clearing tracks:', error);
+                console.error('Error stopping surveillance:', error);
+                this.showNotification('Error stopping surveillance', 'error');
             });
-        
-        this.showNotification('Live demo stopped - All tracks cleared', 'info');
     }
     
     toggleBattleMode() {

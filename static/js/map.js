@@ -14,7 +14,8 @@ class MapManager {
     
     init() {
         this.initLeafletMap();
-        this.initCesiumMap();
+        // Don't initialize basic Cesium - use AdvancedCesiumManager instead
+        // this.initCesiumMap();
     }
     
     // Alias method for compatibility
@@ -404,31 +405,37 @@ class MapManager {
             modeDisplay.textContent = '3D Battle';
         }
         
-        // Check if Cesium viewer exists
-        if (!this.cesiumViewer) {
-            console.error('Cesium viewer not initialized - attempting to reinitialize...');
-            this.initCesiumMap();
+        // Destroy any existing MapManager Cesium viewer to prevent conflicts
+        if (this.cesiumViewer) {
+            try {
+                this.cesiumViewer.destroy();
+                this.cesiumViewer = null;
+                console.log('Destroyed basic Cesium viewer to prevent conflicts');
+            } catch (error) {
+                console.warn('Error destroying basic Cesium viewer:', error);
+            }
         }
         
-        // Resize and update Cesium viewer
-        if (this.cesiumViewer) {
-            console.log('Resizing Cesium viewer and updating tracks...');
+        // Use the Advanced Cesium Manager instead
+        if (window.advancedCesium && window.advancedCesium.viewer) {
+            console.log('Activating Advanced Cesium 3D Battle View...');
             setTimeout(() => {
                 try {
-                    this.cesiumViewer.resize();
-                    this.cesiumViewer.scene.requestRender();
-                    // Force update with current tracks to ensure synchronization
+                    window.advancedCesium.viewer.resize();
+                    window.advancedCesium.viewer.scene.requestRender();
+                    
+                    // Update tracks using advanced Cesium
                     if (this.tracks && this.tracks.length > 0) {
-                        this.updateCesiumTracks(this.tracks);
+                        window.advancedCesium.updateTracks(this.tracks);
                         console.log(`Updated 3D Battle View with ${this.tracks.length} tracks`);
                     }
                     console.log('3D Battle View activated successfully');
                 } catch (error) {
-                    console.error('Error activating 3D view:', error);
+                    console.error('Error activating advanced 3D view:', error);
                 }
             }, 200);
         } else {
-            console.error('Failed to initialize 3D Battle View - WebGL may not be supported');
+            console.error('Advanced Cesium Manager not available');
         }
     }
     
@@ -456,6 +463,7 @@ class MapManager {
             setTimeout(() => {
                 this.leafletMap.invalidateSize();
                 this.updateLeafletTracks(this.tracks);
+                console.log('Resizing Leaflet map and updating tracks...');
             }, 100);
         }
     }

@@ -606,6 +606,84 @@ class AdvancedCesiumManager {
         document.getElementById('cesium-map').style.display = 'none';
         document.getElementById('leaflet-map').style.display = 'block';
     }
+    
+    // Method to update tracks from MapManager
+    updateTracks(tracks) {
+        if (!this.viewer || !tracks) return;
+        
+        // Clear existing entities
+        this.viewer.entities.removeAll();
+        this.unitEntities.clear();
+        
+        // Add tracks as entities
+        tracks.forEach(track => {
+            this.addTrackEntity(track);
+        });
+        
+        console.log(`Advanced Cesium updated with ${tracks.length} tracks`);
+    }
+    
+    addTrackEntity(track) {
+        const trackId = track.track_id || track.id;
+        
+        // Use reasonable altitude defaults for 3D view
+        let altitude = 0;
+        if (track.altitude && track.altitude > 0 && track.altitude < 100000) {
+            altitude = track.altitude;
+        } else {
+            // Set default altitudes based on track type for better 3D visualization
+            const trackType = track.track_type || track.type;
+            if (trackType === 'Aircraft') {
+                altitude = 10000; // 10,000 feet for aircraft
+            } else if (trackType === 'Vessel') {
+                altitude = 0; // Sea level for vessels
+            } else if (trackType === 'Vehicle') {
+                altitude = 100; // 100 feet for ground vehicles
+            }
+        }
+        
+        const position = Cesium.Cartesian3.fromDegrees(
+            track.longitude, 
+            track.latitude, 
+            altitude
+        );
+        
+        const color = this.getTrackColor(track.track_type || track.type);
+        
+        const entity = this.viewer.entities.add({
+            id: trackId,
+            position: position,
+            point: {
+                pixelSize: 12,
+                color: color,
+                outlineColor: Cesium.Color.WHITE,
+                outlineWidth: 2,
+                heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND
+            },
+            label: {
+                text: track.callsign || trackId,
+                font: '12px sans-serif',
+                fillColor: Cesium.Color.WHITE,
+                outlineColor: Cesium.Color.BLACK,
+                outlineWidth: 2,
+                style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+                pixelOffset: new Cesium.Cartesian2(0, -40),
+                horizontalOrigin: Cesium.HorizontalOrigin.CENTER
+            }
+        });
+        
+        this.unitEntities.set(trackId, entity);
+        return entity;
+    }
+    
+    getTrackColor(trackType) {
+        switch (trackType) {
+            case 'Aircraft': return Cesium.Color.CYAN;
+            case 'Vessel': return Cesium.Color.BLUE;
+            case 'Vehicle': return Cesium.Color.GREEN;
+            default: return Cesium.Color.YELLOW;
+        }
+    }
 }
 
 // Global instance

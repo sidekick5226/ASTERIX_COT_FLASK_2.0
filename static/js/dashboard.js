@@ -443,14 +443,18 @@ class SurveillanceDashboard {
         const btn = document.getElementById('battle-mode-btn');
         const tracksPanel = document.getElementById('active-tracks-panel');
         const mapContainer = document.getElementById('map-container');
+        const trackLegend = document.getElementById('track-legend');
         
         if (this.isBattleMode) {
             btn.innerHTML = '<i class="fas fa-globe"></i> Standard View';
             btn.classList.add('active');
             
-            // Hide Active Tracks Panel and make map full width
+            // Hide Active Tracks Panel and Track Legend for clean immersive view
             if (tracksPanel) {
                 tracksPanel.classList.add('hidden');
+            }
+            if (trackLegend) {
+                trackLegend.classList.add('hidden');
             }
             if (mapContainer) {
                 mapContainer.classList.remove('flex-1');
@@ -465,9 +469,12 @@ class SurveillanceDashboard {
             btn.innerHTML = '<i class="fas fa-globe-americas mr-1"></i> Battle View';
             btn.classList.remove('active');
             
-            // Show Active Tracks Panel and restore normal layout
+            // Show Active Tracks Panel and Track Legend for standard view
             if (tracksPanel) {
                 tracksPanel.classList.remove('hidden');
+            }
+            if (trackLegend) {
+                trackLegend.classList.remove('hidden');
             }
             if (mapContainer) {
                 mapContainer.classList.remove('w-full');

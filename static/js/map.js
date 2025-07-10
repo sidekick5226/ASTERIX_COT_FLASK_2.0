@@ -384,7 +384,7 @@ class MapManager {
         switch (trackType) {
             case 'aircraft': return '#3b82f6';
             case 'vessel': return '#10b981';
-            case 'vehicle': return '#ff8800';
+            case 'vehicle': return '#d97706';
             default: return '#6b7280';
         }
     }

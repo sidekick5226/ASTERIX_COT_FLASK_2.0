@@ -235,7 +235,7 @@ class SurveillanceDashboard {
         const typeColors = {
             'Aircraft': 'bg-blue-600',
             'Vessel': 'bg-cyan-600',
-            'Vehicle': 'bg-orange-600'
+            'Vehicle': 'bg-yellow-600'
         };
 
         const statusColors = {
@@ -377,7 +377,7 @@ class SurveillanceDashboard {
             const typeColors = {
                 'Aircraft': 'bg-blue-600 text-white',
                 'Vessel': 'bg-cyan-600 text-white',
-                'Vehicle': 'bg-orange-600 text-white'
+                'Vehicle': 'bg-yellow-600 text-white'
             };
             const typeColor = typeColors[event.track_type] || 'bg-gray-600 text-white';
 
@@ -739,7 +739,7 @@ class SurveillanceDashboard {
         switch (type.toLowerCase()) {
             case 'aircraft': return '#3b82f6';
             case 'vessel': return '#10b981';
-            case 'vehicle': return '#f59e0b';
+            case 'vehicle': return '#d97706';
             default: return '#6b7280';
         }
     }

@@ -223,12 +223,12 @@ body {
 
 .legend-icon.aircraft { color: #3b82f6; }
 .legend-icon.vessel { color: #10b981; }
-.legend-icon.vehicle { color: #f59e0b; }
+.legend-icon.vehicle { color: #d97706; }
 .legend-icon.unknown { color: #6b7280; }
 
-/* Tailwind orange-600 utility */
-.bg-orange-600 {
-    background-color: #f59e0b;
+/* Tailwind yellow-600 utility */
+.bg-yellow-600 {
+    background-color: #d97706;
 }
 
 .legend-count {

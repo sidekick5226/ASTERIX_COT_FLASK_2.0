@@ -258,7 +258,10 @@ class MapManager {
         
         // Calculate arrow positioning - tail connects directly to icon edge
         const iconRadius = 12; // Smaller radius to connect directly to icon edge
-        const headingRadians = heading * Math.PI / 180;
+        
+        // Use 360 - heading for correct positioning around icon border
+        const correctedHeading = 360 - heading;
+        const headingRadians = correctedHeading * Math.PI / 180;
         
         // Create arrow SVG with larger canvas to accommodate full arrow
         const svgSize = 120; // Larger SVG canvas

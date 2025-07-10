@@ -245,20 +245,52 @@ class MapManager {
         const icon = this.getTrackIcon(track.type);
         const color = this.getTrackColor(track.type);
         
-        // Create custom HTML marker
+        // Calculate arrow properties based on heading and speed
+        const heading = track.heading || 0;
+        const speed = track.speed || 0;
+        
+        // Arrow length based on speed (normalize speed to arrow length 10-40px)
+        const minArrowLength = 15;
+        const maxArrowLength = 45;
+        const speedRange = { min: 5, max: 600 }; // Min/max expected speeds
+        const normalizedSpeed = Math.max(0, Math.min(1, (speed - speedRange.min) / (speedRange.max - speedRange.min)));
+        const arrowLength = minArrowLength + (normalizedSpeed * (maxArrowLength - minArrowLength));
+        
+        // Create arrow SVG
+        const arrowSvg = `
+            <svg width="60" height="60" style="position: absolute; top: -30px; left: -30px; pointer-events: none;">
+                <defs>
+                    <marker id="arrowhead-${track.track_id}" markerWidth="6" markerHeight="4" 
+                            refX="6" refY="2" orient="auto" fill="${color}">
+                        <polygon points="0 0, 6 2, 0 4" />
+                    </marker>
+                </defs>
+                <line x1="30" y1="30" 
+                      x2="${30 + arrowLength * Math.sin(heading * Math.PI / 180)}" 
+                      y2="${30 - arrowLength * Math.cos(heading * Math.PI / 180)}" 
+                      stroke="${color}" 
+                      stroke-width="2" 
+                      marker-end="url(#arrowhead-${track.track_id})" />
+            </svg>
+        `;
+        
+        // Create custom HTML marker with icon and directional arrow
         const customIcon = L.divIcon({
-            html: `<div style="color: ${color}; font-size: 16px; text-align: center;">
-                     <i class="${icon}"></i>
-                     <div style="font-size: 10px; font-weight: bold; margin-top: 2px;">${track.track_id}</div>
+            html: `<div style="position: relative;">
+                     ${arrowSvg}
+                     <div style="color: ${color}; font-size: 16px; text-align: center; position: relative; z-index: 10;">
+                         <i class="${icon}"></i>
+                         <div style="font-size: 10px; font-weight: bold; margin-top: 2px;">${track.track_id}</div>
+                     </div>
                    </div>`,
-            iconSize: [40, 40],
-            iconAnchor: [20, 20],
+            iconSize: [60, 60],
+            iconAnchor: [30, 30],
             className: 'custom-track-marker'
         });
         
         const marker = L.marker([track.latitude, track.longitude], { 
             icon: customIcon,
-            title: `${track.track_id} - ${track.type}`
+            title: `${track.track_id} - ${track.type} - ${Math.round(heading)}° @ ${Math.round(speed)} kts`
         });
         
         // Add popup with track details

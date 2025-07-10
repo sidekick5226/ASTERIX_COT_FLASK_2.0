@@ -8,6 +8,10 @@ class SurveillanceDashboard {
         this.isLiveDemo = false;
         this.isBattleMode = false;
         this.updateInterval = null;
+        this.selectedTracks = new Set(); // For multi-track selection
+        this.battleGroups = new Map(); // Battle Groups storage
+        this.battleGroupCounter = 0; // Counter for naming battle groups
+        this.isMultiSelecting = false; // Track if we're in multi-select mode
         this.socket = io({
             timeout: 120000,
             reconnection: true,
@@ -75,6 +79,12 @@ class SurveillanceDashboard {
 
         // Network configuration
         this.bindNetworkConfigEvents();
+        
+        // Battle Group functionality
+        this.bindBattleGroupEvents();
+        
+        // Global shift key tracking for multi-selection
+        this.bindMultiSelectEvents();
     }
 
     bindNetworkConfigEvents() {
@@ -248,9 +258,21 @@ class SurveillanceDashboard {
         const typeColor = typeColors[trackType] || 'bg-gray-600';
         const statusColor = statusColors[track.status] || 'bg-gray-600';
 
-        row.className = 'border-b border-slate-600 hover:bg-slate-600/50';
+        // Add selection state styling
+        const isSelected = this.selectedTracks.has(track.track_id);
+        const selectionClass = isSelected ? 'bg-orange-500/30 border-orange-500' : '';
+        
+        row.className = `border-b border-slate-600 hover:bg-slate-600/50 cursor-pointer ${selectionClass}`;
+        row.dataset.trackId = track.track_id;
+        
+        // Add click event for multi-selection
+        row.addEventListener('click', (e) => this.handleTrackRowClick(e, track.track_id));
+        
         row.innerHTML = `
-            <td class="px-3 py-2">${track.track_id}</td>
+            <td class="px-3 py-2">
+                ${isSelected ? '<i class="fas fa-check-circle text-orange-400 mr-2"></i>' : ''}
+                ${track.track_id}
+            </td>
             <td class="px-3 py-2">
                 <span class="px-2 py-1 rounded text-xs font-medium text-white ${typeColor}">${trackType}</span>
             </td>
@@ -259,10 +281,10 @@ class SurveillanceDashboard {
             </td>
             <td class="px-3 py-2">
                 <div class="flex space-x-1">
-                    <button class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs transition-colors" onclick="dashboard.viewTrackDetails('${track.track_id}')">
+                    <button class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs transition-colors" onclick="event.stopPropagation(); dashboard.viewTrackDetails('${track.track_id}')">
                         <i class="fas fa-info-circle"></i>
                     </button>
-                    <button class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs transition-colors" onclick="dashboard.trackOnMap('${track.track_id}')">
+                    <button class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs transition-colors" onclick="event.stopPropagation(); dashboard.trackOnMap('${track.track_id}')">
                         <i class="fas fa-map-marker-alt"></i>
                     </button>
                 </div>
@@ -741,6 +763,217 @@ class SurveillanceDashboard {
             case 'vessel': return '#9333ea';
             case 'vehicle': return '#d97706';
             default: return '#6b7280';
+        }
+    }
+    
+    // Multi-track selection methods
+    bindMultiSelectEvents() {
+        // Track shift key state
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Shift') {
+                this.isMultiSelecting = true;
+                document.body.classList.add('multi-select-mode');
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'Shift') {
+                this.isMultiSelecting = false;
+                document.body.classList.remove('multi-select-mode');
+                
+                // Show battle group dialog if we have multiple tracks selected
+                if (this.selectedTracks.size > 1) {
+                    this.showBattleGroupDialog();
+                }
+            }
+        });
+    }
+
+    handleTrackRowClick(event, trackId) {
+        if (this.isMultiSelecting) {
+            // Multi-select mode
+            if (this.selectedTracks.has(trackId)) {
+                this.selectedTracks.delete(trackId);
+                console.log(`Deselected track ${trackId}`);
+            } else {
+                this.selectedTracks.add(trackId);
+                console.log(`Selected track ${trackId}`);
+            }
+            
+            // Update the track display to show selection
+            this.updateTracksDisplay();
+            
+            // Update map highlighting if in 3D mode
+            if (window.cesiumAdvanced && window.cesiumAdvanced.isActive()) {
+                window.cesiumAdvanced.highlightSelectedTracks(Array.from(this.selectedTracks));
+            }
+        } else {
+            // Single track selection - clear previous selections
+            this.selectedTracks.clear();
+            this.selectedTracks.add(trackId);
+            this.updateTracksDisplay();
+            
+            // Focus on single track
+            this.trackOnMap(trackId);
+        }
+    }
+
+    showBattleGroupDialog() {
+        const dialog = document.getElementById('battle-group-dialog');
+        const selectedCount = document.getElementById('selected-count');
+        const selectedTracksPreview = document.getElementById('selected-tracks-preview');
+        
+        // Update dialog content
+        selectedCount.textContent = this.selectedTracks.size;
+        
+        // Show preview of selected tracks
+        selectedTracksPreview.innerHTML = '';
+        Array.from(this.selectedTracks).forEach(trackId => {
+            const track = this.tracks.get(trackId);
+            if (track) {
+                const trackElement = document.createElement('div');
+                trackElement.className = 'flex items-center justify-between py-1';
+                trackElement.innerHTML = `
+                    <span class="text-slate-300">${trackId}</span>
+                    <span class="text-xs text-slate-400">${track.track_type || 'Unknown'}</span>
+                `;
+                selectedTracksPreview.appendChild(trackElement);
+            }
+        });
+        
+        // Show dialog
+        dialog.classList.remove('hidden');
+    }
+
+    hideBattleGroupDialog() {
+        const dialog = document.getElementById('battle-group-dialog');
+        dialog.classList.add('hidden');
+    }
+
+    bindBattleGroupEvents() {
+        // Cancel button
+        document.getElementById('cancel-battle-group').addEventListener('click', () => {
+            this.selectedTracks.clear();
+            this.updateTracksDisplay();
+            this.hideBattleGroupDialog();
+        });
+
+        // Confirm button
+        document.getElementById('confirm-battle-group').addEventListener('click', () => {
+            this.createBattleGroup();
+        });
+    }
+
+    createBattleGroup() {
+        const selectedTrackIds = Array.from(this.selectedTracks);
+        const battleGroupName = String.fromCharCode(65 + this.battleGroupCounter); // A, B, C, etc.
+        
+        const battleGroup = {
+            id: `BG-${battleGroupName}`,
+            name: `Battle Group ${battleGroupName}`,
+            tracks: selectedTrackIds,
+            created: new Date().toISOString(),
+            color: this.getBattleGroupColor(this.battleGroupCounter)
+        };
+        
+        this.battleGroups.set(battleGroup.id, battleGroup);
+        this.battleGroupCounter++;
+        
+        // Clear selection
+        this.selectedTracks.clear();
+        this.updateTracksDisplay();
+        this.updateBattleGroupsDisplay();
+        this.hideBattleGroupDialog();
+        
+        // Show notification
+        this.showNotification(`${battleGroup.name} created with ${selectedTrackIds.length} tracks`, 'success');
+        
+        // Update map highlighting
+        if (window.cesiumAdvanced && window.cesiumAdvanced.isActive()) {
+            window.cesiumAdvanced.highlightBattleGroup(battleGroup);
+        }
+    }
+
+    getBattleGroupColor(index) {
+        const colors = ['orange', 'red', 'green', 'blue', 'purple', 'yellow', 'pink', 'cyan'];
+        return colors[index % colors.length];
+    }
+
+    updateBattleGroupsDisplay() {
+        const section = document.getElementById('battle-groups-section');
+        const list = document.getElementById('battle-groups-list');
+        const counter = document.getElementById('total-battle-groups');
+        
+        if (this.battleGroups.size === 0) {
+            section.classList.add('hidden');
+            return;
+        }
+        
+        section.classList.remove('hidden');
+        counter.textContent = this.battleGroups.size;
+        
+        list.innerHTML = '';
+        this.battleGroups.forEach((battleGroup, id) => {
+            const groupElement = document.createElement('div');
+            groupElement.className = 'bg-slate-800 border border-slate-600 rounded-lg p-3';
+            groupElement.innerHTML = `
+                <div class="flex items-center justify-between mb-2">
+                    <h7 class="font-semibold text-white flex items-center">
+                        <i class="fas fa-users mr-2" style="color: ${battleGroup.color}"></i>
+                        ${battleGroup.name}
+                    </h7>
+                    <button class="text-red-400 hover:text-red-300 text-sm" onclick="dashboard.disbandBattleGroup('${id}')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="text-xs text-slate-400 mb-2">
+                    ${battleGroup.tracks.length} tracks
+                </div>
+                <div class="flex flex-wrap gap-1">
+                    ${battleGroup.tracks.map(trackId => 
+                        `<span class="px-2 py-1 bg-slate-700 text-slate-300 rounded text-xs">${trackId}</span>`
+                    ).join('')}
+                </div>
+                <div class="mt-2 flex space-x-2">
+                    <button class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs" 
+                            onclick="dashboard.focusBattleGroup('${id}')">
+                        <i class="fas fa-search mr-1"></i> Focus
+                    </button>
+                    <button class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs" 
+                            onclick="dashboard.followBattleGroup('${id}')">
+                        <i class="fas fa-video mr-1"></i> Follow
+                    </button>
+                </div>
+            `;
+            list.appendChild(groupElement);
+        });
+    }
+
+    disbandBattleGroup(battleGroupId) {
+        const battleGroup = this.battleGroups.get(battleGroupId);
+        if (battleGroup) {
+            this.battleGroups.delete(battleGroupId);
+            this.updateBattleGroupsDisplay();
+            this.showNotification(`${battleGroup.name} disbanded`, 'info');
+            
+            // Update map
+            if (window.cesiumAdvanced && window.cesiumAdvanced.isActive()) {
+                window.cesiumAdvanced.clearBattleGroupHighlight(battleGroupId);
+            }
+        }
+    }
+
+    focusBattleGroup(battleGroupId) {
+        const battleGroup = this.battleGroups.get(battleGroupId);
+        if (battleGroup && window.cesiumAdvanced && window.cesiumAdvanced.isActive()) {
+            window.cesiumAdvanced.focusOnBattleGroup(battleGroup);
+        }
+    }
+
+    followBattleGroup(battleGroupId) {
+        const battleGroup = this.battleGroups.get(battleGroupId);
+        if (battleGroup && window.cesiumAdvanced && window.cesiumAdvanced.isActive()) {
+            window.cesiumAdvanced.followBattleGroup(battleGroup);
         }
     }
 }

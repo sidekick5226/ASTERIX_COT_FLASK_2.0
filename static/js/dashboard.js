@@ -464,37 +464,41 @@ class SurveillanceDashboard {
                 container3D.style.width = '100%';
             }
             
-            // Initialize Advanced Cesium viewer if not already done
+            // Initialize Cesium viewer for battle mode
             if (!window.cesiumManager) {
-                // Initialize basic Cesium viewer for battle mode
                 if (typeof Cesium !== 'undefined') {
                     console.log('Initializing Cesium viewer for Battle Mode...');
                     
-                    window.cesiumManager = {
-                        viewer: new Cesium.Viewer('cesium-container', {
-                            terrainProvider: Cesium.createWorldTerrain(),
-                            imageryProvider: new Cesium.ArcGisMapServerImageryProvider({
-                                url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'
-                            }),
-                            baseLayerPicker: false,
-                            geocoder: false,
-                            homeButton: false,
-                            sceneModePicker: false,
-                            navigationHelpButton: false,
-                            animation: false,
-                            timeline: false,
-                            fullscreenButton: false,
-                            vrButton: false
-                        }),
-                        entities: new Map()
-                    };
-                    
-                    // Center the globe on a reasonable location (continental US)
-                    window.cesiumManager.viewer.camera.setView({
-                        destination: Cesium.Cartesian3.fromDegrees(-98.0, 39.0, 15000000)
-                    });
-                    
-                    console.log('Cesium Battle Mode viewer initialized with centered view');
+                    try {
+                        // Create basic Cesium viewer with minimal configuration
+                        const viewer = new Cesium.Viewer('cesium-container');
+                        
+                        // Remove unwanted UI elements
+                        viewer.cesiumWidget.creditContainer.style.display = "none";
+                        viewer.baseLayerPicker.destroy();
+                        viewer.geocoder.destroy();
+                        viewer.homeButton.destroy();
+                        viewer.sceneModePicker.destroy();
+                        viewer.navigationHelpButton.destroy();
+                        viewer.animation.destroy();
+                        viewer.timeline.destroy();
+                        viewer.fullscreenButton.destroy();
+                        viewer.vrButton.destroy();
+                        
+                        window.cesiumManager = {
+                            viewer: viewer,
+                            entities: new Map()
+                        };
+                        
+                        // Center the globe immediately
+                        viewer.camera.setView({
+                            destination: Cesium.Cartesian3.fromDegrees(-98.0, 39.0, 15000000)
+                        });
+                        
+                        console.log('Cesium Battle Mode viewer initialized successfully');
+                    } catch (error) {
+                        console.error('Failed to initialize Cesium viewer:', error);
+                    }
                 }
             }
             

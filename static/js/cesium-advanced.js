@@ -757,42 +757,67 @@ class AdvancedCesiumManager {
     }
     
     showTrackPopup(entity) {
-        const trackData = entity.properties?.trackData?.getValue() || this.extractTrackDataFromEntity(entity);
+        let trackData = null;
+        
+        // Try to get track data from stored properties
+        if (entity.properties && entity.properties.trackData) {
+            trackData = entity.properties.trackData.getValue ? entity.properties.trackData.getValue() : entity.properties.trackData;
+        }
+        
+        // If no stored data, try to find from current tracks
+        if (!trackData && window.dashboard && window.dashboard.tracks) {
+            const trackId = entity.id.replace('unit_', '');
+            trackData = window.dashboard.tracks.get(trackId);
+        }
+        
+        // Fallback to entity extraction
+        if (!trackData) {
+            trackData = this.extractTrackDataFromEntity(entity);
+        }
+        
         if (!trackData) return;
         
         const popup = document.getElementById('track-selection-popup');
         if (!popup) return;
         
-        // Update popup content with track data
-        document.getElementById('selected-track-id').textContent = trackData.track_id;
-        document.getElementById('popup-object-id').textContent = trackData.id || Math.floor(Math.random() * 9999999);
+        // Update popup with real track data
+        document.getElementById('selected-track-id').textContent = trackData.track_id || entity.id;
+        document.getElementById('popup-object-id').textContent = trackData.id || 'N/A';
         document.getElementById('popup-callsign').textContent = trackData.callsign || 'N/A';
         document.getElementById('popup-type').textContent = trackData.type || trackData.track_type || 'Unknown';
+        
+        // Real position data
+        const lat = trackData.latitude || 0;
+        const lon = trackData.longitude || 0;
+        const alt = trackData.altitude || 0;
+        const heading = trackData.heading || 0;
+        const speed = trackData.speed || 0;
+        
+        document.getElementById('popup-latitude').textContent = lat.toFixed(6);
+        document.getElementById('popup-longitude').textContent = lon.toFixed(6);
+        document.getElementById('popup-altitude').textContent = alt > 0 ? `${Math.round(alt)} ft` : 'N/A';
+        document.getElementById('popup-heading').textContent = `${Math.round(heading)}°`;
+        document.getElementById('popup-speed').textContent = `${Math.round(speed)} kts`;
+        document.getElementById('popup-status').textContent = trackData.status || 'Active';
+        
+        // Technical metadata (can be customized per track type)
         document.getElementById('popup-date').textContent = new Date().toISOString().slice(0, 10).replace(/-/g, '');
         document.getElementById('popup-resolution').textContent = '0.46';
         document.getElementById('popup-accuracy').textContent = '5';
-        document.getElementById('popup-description').textContent = 'GEOINT';
-        document.getElementById('popup-source-info').textContent = 'Vivid Advanced';
-        document.getElementById('popup-source').textContent = 'Maxar';
+        document.getElementById('popup-description').textContent = 'SURVEILLANCE';
+        document.getElementById('popup-source-info').textContent = 'ASTERIX Data Feed';
+        document.getElementById('popup-source').textContent = 'Radar/ADS-B';
         document.getElementById('popup-src-date2').textContent = new Date().toLocaleDateString();
         document.getElementById('popup-max-map-level').textContent = '16';
         document.getElementById('popup-max-map-level-ent').textContent = '19';
         document.getElementById('popup-draw-order').textContent = '6';
-        document.getElementById('popup-block-name').textContent = 'Vivid_Advanced_New_York_City_US_24Q1';
-        document.getElementById('popup-release-name').textContent = 'Maps 2024 H05';
-        
-        // Update position data
-        document.getElementById('popup-latitude').textContent = trackData.latitude?.toFixed(6) || '0.000000';
-        document.getElementById('popup-longitude').textContent = trackData.longitude?.toFixed(6) || '0.000000';
-        document.getElementById('popup-altitude').textContent = trackData.altitude ? `${Math.round(trackData.altitude)} ft` : '0 ft';
-        document.getElementById('popup-heading').textContent = trackData.heading ? `${Math.round(trackData.heading)}°` : '000°';
-        document.getElementById('popup-speed').textContent = trackData.speed ? `${Math.round(trackData.speed)} kts` : '0 kts';
-        document.getElementById('popup-status').textContent = trackData.status || 'Active';
+        document.getElementById('popup-block-name').textContent = 'Live_Surveillance_Feed';
+        document.getElementById('popup-release-name').textContent = 'COP Dashboard 2025';
         
         // Show popup
         popup.classList.remove('hidden');
         
-        console.log('Track popup shown for:', trackData.track_id);
+        console.log('Track popup shown for:', trackData.track_id || entity.id, trackData);
     }
     
     hideTrackPopup() {
@@ -804,13 +829,26 @@ class AdvancedCesiumManager {
     
     extractTrackDataFromEntity(entity) {
         // Extract track data from entity when stored track data is not available
+        let lat = 0, lon = 0, alt = 0;
+        
+        // Try to get position from entity
+        if (entity.position) {
+            const cartesian = entity.position.getValue ? entity.position.getValue(Cesium.JulianDate.now()) : entity.position;
+            if (cartesian) {
+                const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+                lat = Cesium.Math.toDegrees(cartographic.latitude);
+                lon = Cesium.Math.toDegrees(cartographic.longitude);
+                alt = cartographic.height;
+            }
+        }
+        
         return {
-            track_id: entity.id,
-            callsign: entity.label?.text?.getValue() || entity.id,
-            type: 'Unknown',
-            latitude: 0,
-            longitude: 0,
-            altitude: 0,
+            track_id: entity.id.replace('unit_', ''),
+            callsign: entity.label?.text?.getValue ? entity.label.text.getValue() : (entity.label?.text || entity.id),
+            type: entity.properties?.unitType?.getValue ? entity.properties.unitType.getValue() : 'Unknown',
+            latitude: lat,
+            longitude: lon,
+            altitude: alt,
             heading: 0,
             speed: 0,
             status: 'Active'

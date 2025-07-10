@@ -302,11 +302,18 @@ class SurveillanceDashboard {
         try {
             const response = await fetch('/api/events');
             const data = await response.json();
-            this.events = data.events;
+            this.events = data.events || [];
             
+            // Update Event Monitor display
             this.updateEventsDisplay();
+            
+            // Also load Event Log if on that tab  
+            await this.loadEventLog();
+            
+            this.showNotification('Events refreshed', 'success');
         } catch (error) {
             console.error('Error refreshing events:', error);
+            this.showNotification('Error refreshing events', 'error');
         }
     }
     

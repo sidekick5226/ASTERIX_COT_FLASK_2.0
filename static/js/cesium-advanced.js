@@ -119,24 +119,33 @@ class AdvancedCesiumManager {
     }
     
     addCameraControlsUI() {
-        // Add camera control buttons to the viewer toolbar
-        const toolbar = this.viewer.toolbar;
+        // Add camera control buttons to the Cesium viewer's toolbar
+        const toolbar = this.viewer.cesiumWidget.toolbar;
         
-        // Follow Camera Button
-        const followButton = document.createElement('button');
-        followButton.className = 'cesium-button cesium-toolbar-button';
-        followButton.innerHTML = '<i class="fas fa-video"></i>';
-        followButton.title = 'Follow Camera Mode';
-        followButton.onclick = () => this.toggleFollowMode();
-        toolbar.appendChild(followButton);
+        if (!toolbar) {
+            console.warn('Cesium toolbar not available, skipping camera controls UI');
+            return;
+        }
         
-        // Reset Camera Button
-        const resetButton = document.createElement('button');
-        resetButton.className = 'cesium-button cesium-toolbar-button';
-        resetButton.innerHTML = '<i class="fas fa-home"></i>';
-        resetButton.title = 'Reset Camera View';
-        resetButton.onclick = () => this.resetCamera();
-        toolbar.appendChild(resetButton);
+        try {
+            // Follow Camera Button
+            const followButton = document.createElement('button');
+            followButton.className = 'cesium-button cesium-toolbar-button';
+            followButton.innerHTML = '<i class="fas fa-video"></i>';
+            followButton.title = 'Follow Camera Mode';
+            followButton.onclick = () => this.toggleFollowMode();
+            toolbar.appendChild(followButton);
+            
+            // Reset Camera Button
+            const resetButton = document.createElement('button');
+            resetButton.className = 'cesium-button cesium-toolbar-button';
+            resetButton.innerHTML = '<i class="fas fa-home"></i>';
+            resetButton.title = 'Reset Camera View';
+            resetButton.onclick = () => this.resetCamera();
+            toolbar.appendChild(resetButton);
+        } catch (error) {
+            console.warn('Could not add camera controls UI:', error);
+        }
     }
     
     setupCoTWebSocket() {

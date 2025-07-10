@@ -24,6 +24,13 @@ class MapManager {
     }
     
     initLeafletMap() {
+        // Check if map is already initialized
+        const mapContainer = document.getElementById('leaflet-map');
+        if (mapContainer._leaflet_id) {
+            console.log('Leaflet map already initialized, reusing existing instance');
+            return;
+        }
+        
         // Initialize Leaflet map (2D)
         this.leafletMap = L.map('leaflet-map', {
             center: [40.0, -74.0], // New York area

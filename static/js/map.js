@@ -256,29 +256,38 @@ class MapManager {
         const normalizedSpeed = Math.max(0, Math.min(1, (speed - speedRange.min) / (speedRange.max - speedRange.min)));
         const arrowLength = minArrowLength + (normalizedSpeed * (maxArrowLength - minArrowLength));
         
-        // Calculate icon border position based on heading
+        // Calculate arrow positioning - tail attaches to icon border, arrow extends outward
         const iconRadius = 18; // Distance from center to icon border
         const headingRadians = heading * Math.PI / 180;
         
-        // Start point at icon border (where arrow attaches to icon)
-        const startX = 30 + iconRadius * Math.sin(headingRadians);
-        const startY = 30 - iconRadius * Math.cos(headingRadians);
+        // Start point (tail of arrow) at icon border
+        const tailX = 30 + iconRadius * Math.sin(headingRadians);
+        const tailY = 30 - iconRadius * Math.cos(headingRadians);
         
-        // End point for arrow (extending from icon border)
-        const endX = startX + arrowLength * Math.sin(headingRadians);
-        const endY = startY - arrowLength * Math.cos(headingRadians);
+        // End point (head of arrow) extending outward from icon
+        const headX = tailX + arrowLength * Math.sin(headingRadians);
+        const headY = tailY - arrowLength * Math.cos(headingRadians);
         
-        // Create arrow SVG
+        // Create arrow SVG with larger canvas to accommodate full arrow
+        const svgSize = 120; // Larger SVG canvas
+        const svgCenter = svgSize / 2;
+        
+        // Adjust coordinates for larger SVG
+        const adjustedTailX = svgCenter + iconRadius * Math.sin(headingRadians);
+        const adjustedTailY = svgCenter - iconRadius * Math.cos(headingRadians);
+        const adjustedHeadX = adjustedTailX + arrowLength * Math.sin(headingRadians);
+        const adjustedHeadY = adjustedTailY - arrowLength * Math.cos(headingRadians);
+        
         const arrowSvg = `
-            <svg width="60" height="60" style="position: absolute; top: -30px; left: -30px; pointer-events: none;">
+            <svg width="${svgSize}" height="${svgSize}" style="position: absolute; top: -${svgCenter}px; left: -${svgCenter}px; pointer-events: none;">
                 <defs>
                     <marker id="arrowhead-${track.track_id}" markerWidth="6" markerHeight="4" 
                             refX="6" refY="2" orient="auto" fill="${color}">
                         <polygon points="0 0, 6 2, 0 4" />
                     </marker>
                 </defs>
-                <line x1="${startX}" y1="${startY}" 
-                      x2="${endX}" y2="${endY}" 
+                <line x1="${adjustedTailX}" y1="${adjustedTailY}" 
+                      x2="${adjustedHeadX}" y2="${adjustedHeadY}" 
                       stroke="${color}" 
                       stroke-width="2" 
                       marker-end="url(#arrowhead-${track.track_id})" />
@@ -294,8 +303,8 @@ class MapManager {
                          <div style="font-size: 10px; font-weight: bold; margin-top: 2px;">${track.track_id}</div>
                      </div>
                    </div>`,
-            iconSize: [60, 60],
-            iconAnchor: [30, 30],
+            iconSize: [svgSize, svgSize],
+            iconAnchor: [svgCenter, svgCenter],
             className: 'custom-track-marker'
         });
         

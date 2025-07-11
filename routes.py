@@ -1,13 +1,16 @@
 from flask import render_template, request, jsonify
 from flask_socketio import emit
-from app import app, socketio, db
-from models import Track, Event, NetworkConfig
-from datetime import datetime
+from app import app, socketio
+from models import Track, Event, NetworkConfig, db
+from datetime import datetime, timedelta
 import json
 import math
 import random
 import threading
 import time
+import csv
+import os
+import schedule
 from asterix_processor import AsterixProcessor
 from cot_converter import CoTConverter
 from klv_converter import KLVConverter
@@ -18,6 +21,82 @@ asterix_processor = AsterixProcessor()
 cot_converter = CoTConverter()
 klv_converter = KLVConverter()
 cot_processor = CoTProcessor()
+
+# Ensure export directory exists
+EXPORT_DIR = os.path.join(os.path.dirname(__file__), 'export_log_hist')
+os.makedirs(EXPORT_DIR, exist_ok=True)
+
+def export_event_log_to_csv(clear_after_export=False):
+    """Export all events to CSV with optional clearing"""
+    try:
+        # Get current date and time for filename to avoid overwriting
+        current_datetime = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"event_log_{current_datetime}.csv"
+        filepath = os.path.join(EXPORT_DIR, filename)
+        
+        # Get all events from the database
+        events = Event.query.order_by(Event.timestamp.asc()).all()
+        
+        if events:
+            # Write events to CSV
+            with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
+                fieldnames = ['id', 'track_id', 'event_type', 'description', 'timestamp']
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                
+                # Write header
+                writer.writeheader()
+                
+                # Write event data
+                for event in events:
+                    writer.writerow({
+                        'id': event.id,
+                        'track_id': event.track_id,
+                        'event_type': event.event_type,
+                        'description': event.description,
+                        'timestamp': event.timestamp.isoformat() if event.timestamp else ''
+                    })
+            
+            # Clear all events from database after successful export (only if requested)
+            if clear_after_export:
+                Event.query.delete()
+                db.session.commit()
+                print(f"Successfully exported {len(events)} events to {filepath} and cleared event log")
+            else:
+                print(f"Successfully exported {len(events)} events to {filepath} (log not cleared)")
+            
+            return filepath
+            
+        else:
+            print(f"No events to export at {current_datetime}")
+            return None
+            
+    except Exception as e:
+        print(f"Error during event log export: {e}")
+        db.session.rollback()
+        return None
+
+def export_daily_event_log():
+    """Export all events to CSV and clear the event log (runs daily at midnight)"""
+    result = export_event_log_to_csv(clear_after_export=True)
+    return result is not None
+
+def start_daily_export_scheduler():
+    """Start the background scheduler for daily event log exports"""
+    # Schedule daily export at midnight
+    schedule.every().day.at("00:00").do(export_daily_event_log)
+    
+    def run_scheduler():
+        while True:
+            schedule.run_pending()
+            time.sleep(60)  # Check every minute
+    
+    # Start scheduler in background thread
+    scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
+    scheduler_thread.start()
+    print("Daily event log export scheduler started (runs at midnight)")
+
+# Start the scheduler when the module loads
+start_daily_export_scheduler()
 
 @app.route('/')
 def dashboard():
@@ -173,6 +252,59 @@ def network_config():
         'ip_address': '127.0.0.1',
         'is_active': True
     })
+
+@app.route('/api/export-events', methods=['POST'])
+def manual_export_events():
+    """Manually trigger event log export (does NOT clear the log)"""
+    try:
+        result = export_event_log_to_csv(clear_after_export=False)
+        if result:
+            return jsonify({
+                'status': 'success',
+                'message': 'Event log exported successfully (log not cleared)',
+                'file_path': result
+            })
+        else:
+            return jsonify({
+                'status': 'success',
+                'message': 'No events to export'
+            })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@app.route('/api/export-history')
+def get_export_history():
+    """Get list of exported event log files"""
+    try:
+        files = []
+        if os.path.exists(EXPORT_DIR):
+            for filename in os.listdir(EXPORT_DIR):
+                if filename.startswith('event_log_') and filename.endswith('.csv'):
+                    filepath = os.path.join(EXPORT_DIR, filename)
+                    stat = os.stat(filepath)
+                    files.append({
+                        'filename': filename,
+                        'size': stat.st_size,
+                        'created': datetime.fromtimestamp(stat.st_ctime).isoformat(),
+                        'modified': datetime.fromtimestamp(stat.st_mtime).isoformat()
+                    })
+        
+        # Sort by creation date, newest first
+        files.sort(key=lambda x: x['created'], reverse=True)
+        
+        return jsonify({
+            'status': 'success',
+            'files': files,
+            'export_directory': EXPORT_DIR
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
 
 @socketio.on('connect')
 def handle_connect():

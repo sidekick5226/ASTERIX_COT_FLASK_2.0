@@ -1,0 +1,10 @@
+id,track_id,event_type,description,timestamp
+1,TRK1000,Altitude Change,Track TRK1000: course change - routine update,2025-07-11T14:46:12.010120
+2,TRK1000,Communication,Track TRK1000: speed alert - routine update,2025-07-11T14:46:18.038381
+3,TRK1003,Altitude Change,Track TRK1003: speed alert - routine update,2025-07-11T14:46:36.184975
+4,TRK1006,Speed Alert,Track TRK1006: altitude change - status change,2025-07-11T14:46:48.278160
+5,TRK1007,Altitude Change,Track TRK1007: course change - normal operation,2025-07-11T14:46:52.314347
+6,TRK1000,Speed Alert,Track TRK1000: course change - routine update,2025-07-11T14:46:58.368247
+7,TRK1007,Altitude Change,Track TRK1007: communication - normal operation,2025-07-11T14:47:04.413380
+8,TRK1001,Course Change,Track TRK1001: speed alert - routine update,2025-07-11T14:47:14.476529
+9,TRK1004,Communication,Track TRK1004: speed alert - routine update,2025-07-11T14:47:18.503075

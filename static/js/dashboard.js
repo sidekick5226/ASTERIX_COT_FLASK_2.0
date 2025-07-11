@@ -9,6 +9,7 @@ class SurveillanceDashboard {
         this.isLiveDemo = false;
         this.isBattleMode = false;
         this.updateInterval = null;
+        this.monitorInterval = null; // For Event Monitor auto-refresh
         this.selectedTracks = new Set(); // For multi-track selection
         this.battleGroups = new Map(); // Battle Groups storage
         this.battleGroupCounter = 0; // Counter for naming battle groups
@@ -71,6 +72,9 @@ class SurveillanceDashboard {
         document.getElementById('stop-demo-btn').addEventListener('click', () => this.stopLiveDemo());
         document.getElementById('battle-mode-btn').addEventListener('click', () => this.toggleBattleMode());
 
+        // Add test dialog button for debugging
+        document.getElementById('test-dialog-btn').addEventListener('click', () => this.testBattleGroupDialog());
+
         // Add advanced 3D mode with double-click
         document.getElementById('battle-mode-btn').addEventListener('dblclick', () => this.toggleAdvanced3DMode());
 
@@ -115,7 +119,6 @@ class SurveillanceDashboard {
             // Initialize empty tracks display
             this.tracks.clear();
             this.updateTracksDisplay();
-            this.updateTrackCounts();
         } catch (error) {
             console.error('Error loading initial data:', error);
             // Don't show popup notification to prevent spam
@@ -145,7 +148,6 @@ class SurveillanceDashboard {
             });
 
             this.updateTracksDisplay();
-            this.updateTrackCounts();
 
             if (window.mapManager) {
                 window.mapManager.updateTracks(tracks);
@@ -158,7 +160,7 @@ class SurveillanceDashboard {
     }
 
     startPeriodicUpdates() {
-        // Check for track updates every 1 second, monitor events every 2 seconds
+        // Check for track updates every 1 second, monitor events every 1.5 seconds for faster refresh
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
         }
@@ -171,10 +173,14 @@ class SurveillanceDashboard {
             await this.loadTracks();
         }, 1000);
 
-        // Monitor events every 2 seconds to avoid overwhelming the UI
+        // Monitor events every 1.5 seconds for faster real-time updates
         this.monitorInterval = setInterval(async () => {
+            // Show brief visual feedback during auto-refresh
+            this.showAutoRefreshIndicator();
             await this.loadMonitorEvents();
-        }, 2000);
+        }, 1500);
+
+        console.log('Started periodic updates - Event Monitor will auto-refresh every 1.5 seconds');
     }
 
     stopPeriodicUpdates() {
@@ -294,29 +300,6 @@ class SurveillanceDashboard {
         return row;
     }
 
-    updateTrackCounts() {
-        const counts = {
-            aircraft: 0,
-            vessel: 0,
-            vehicle: 0,
-            unknown: 0
-        };
-
-        this.tracks.forEach(track => {
-            const type = (track.track_type || track.type || 'unknown').toLowerCase();
-            if (counts.hasOwnProperty(type)) {
-                counts[type]++;
-            } else {
-                counts.unknown++;
-            }
-        });
-
-        document.getElementById('aircraft-count').textContent = counts.aircraft;
-        document.getElementById('vessel-count').textContent = counts.vessel;
-        document.getElementById('vehicle-count').textContent = counts.vehicle;
-        document.getElementById('unknown-count').textContent = counts.unknown;
-    }
-
     filterTracks(type) {
         // Implementation for track filtering
         if (window.mapManager) {
@@ -349,14 +332,29 @@ class SurveillanceDashboard {
 
     async refreshEvents() {
         try {
+            // Show manual refresh in progress
+            const refreshBtn = document.getElementById('refresh-events-btn');
+            const originalHTML = refreshBtn.innerHTML;
+            refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Refreshing...';
+            refreshBtn.disabled = true;
+
             // Refresh both monitor events and event log
             await this.loadMonitorEvents();
             await this.loadEventLog();
 
-            this.showNotification('Events refreshed', 'success');
+            this.showNotification('Events manually refreshed', 'success');
+
+            // Restore button
+            refreshBtn.innerHTML = originalHTML;
+            refreshBtn.disabled = false;
         } catch (error) {
             console.error('Error refreshing events:', error);
             this.showNotification('Error refreshing events', 'error');
+            
+            // Restore button on error
+            const refreshBtn = document.getElementById('refresh-events-btn');
+            refreshBtn.innerHTML = '<i class="fas fa-sync mr-1"></i> Manual Refresh';
+            refreshBtn.disabled = false;
         }
     }
 
@@ -431,7 +429,7 @@ class SurveillanceDashboard {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                timeout: 3000 // 3 second timeout
+                timeout: 2000 // Reduced timeout for faster response
             });
 
             if (!response.ok) {
@@ -442,16 +440,20 @@ class SurveillanceDashboard {
             const data = await response.json();
 
             if (data.status === 'success') {
-                // Replace monitor events with current real-time data
+                // Update monitor events with current real-time data
+                const previousCount = this.monitorEvents.length;
                 this.monitorEvents = data.events || [];
 
                 // Update the Event Monitor display
                 this.updateEventsDisplay();
 
-                console.log(`Loaded ${this.monitorEvents.length} monitor events`);
+                // Only log if there's a change to avoid console spam
+                if (this.monitorEvents.length !== previousCount) {
+                    console.log(`Monitor events updated: ${this.monitorEvents.length} events (was ${previousCount})`);
+                }
             }
         } catch (error) {
-            // Silently handle errors to avoid console spam
+            // Silently handle errors to avoid console spam during auto-refresh
             if (error.name !== 'AbortError') {
                 console.warn('Monitor events temporarily unavailable');
             }
@@ -551,16 +553,33 @@ class SurveillanceDashboard {
     }
 
     exportEventLog() {
-        // Implementation for exporting event log
-        const data = this.events.map(event => ({
-            timestamp: event.timestamp,
-            track_id: event.track_id,
-            event_type: event.event_type,
-            description: event.description
-        }));
-
-        const csv = this.convertToCSV(data);
-        this.downloadCSV(csv, 'event_log.csv');
+        console.log('Export button clicked');
+        // Call the API to export the event log (without clearing)
+        if (confirm('This will export all events to CSV. The log will remain in the system. Continue?')) {
+            console.log('User confirmed export');
+            fetch('/api/export-events', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Export response:', data);
+                if (data.status === 'success') {
+                    this.showNotification(data.message, 'success');
+                    // No need to refresh the event log since it wasn't cleared
+                } else {
+                    this.showNotification('Failed to export event log: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Export error:', error);
+                this.showNotification('Error exporting event log', 'error');
+            });
+        } else {
+            console.log('User cancelled export');
+        }
     }
 
     convertToCSV(data) {
@@ -620,7 +639,6 @@ class SurveillanceDashboard {
         // Immediately clear UI for responsive feel
         this.tracks.clear();
         this.updateTracksDisplay();
-        this.updateTrackCounts();
 
         // Clear tracks from map immediately
         if (window.mapManager) {
@@ -732,7 +750,6 @@ class SurveillanceDashboard {
         });
 
         this.updateTracksDisplay();
-        this.updateTrackCounts();
 
         if (window.mapManager) {
             window.mapManager.updateTracks(tracks);
@@ -773,7 +790,8 @@ class SurveillanceDashboard {
         
         // Track shift key state
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Shift') {
+            // Don't activate multi-select mode if dialog is open or if user is typing in an input field
+            if (e.key === 'Shift' && !this.isDialogOpen() && !this.isTypingInInput(e.target)) {
                 console.log('Shift key pressed - entering multi-select mode');
                 this.isMultiSelecting = true;
                 document.body.classList.add('multi-select-mode');
@@ -781,7 +799,8 @@ class SurveillanceDashboard {
         });
 
         document.addEventListener('keyup', (e) => {
-            if (e.key === 'Shift') {
+            // Only process shift release if we were in multi-select mode
+            if (e.key === 'Shift' && this.isMultiSelecting) {
                 console.log('Shift key released - exiting multi-select mode');
                 this.isMultiSelecting = false;
                 document.body.classList.remove('multi-select-mode');
@@ -789,10 +808,35 @@ class SurveillanceDashboard {
                 // Show battle group dialog if we have multiple tracks selected
                 if (this.selectedTracks.size > 1) {
                     console.log(`Showing battle group dialog for ${this.selectedTracks.size} selected tracks`);
-                    this.showBattleGroupDialog();
+                    console.log('Selected tracks:', Array.from(this.selectedTracks));
+                    
+                    // Add a small delay to ensure the UI is ready
+                    setTimeout(() => {
+                        this.showBattleGroupDialog();
+                    }, 100);
+                } else {
+                    console.log(`Only ${this.selectedTracks.size} tracks selected - dialog not shown`);
                 }
             }
         });
+    }
+
+    // Helper method to check if any dialog is open
+    isDialogOpen() {
+        const dialog = document.getElementById('battle-group-dialog');
+        return dialog && !dialog.classList.contains('hidden');
+    }
+
+    // Helper method to check if user is typing in an input field
+    isTypingInInput(target) {
+        if (!target) return false;
+        
+        const tagName = target.tagName.toLowerCase();
+        const inputTypes = ['input', 'textarea', 'select'];
+        
+        return inputTypes.includes(tagName) || 
+               target.contentEditable === 'true' ||
+               target.closest('input, textarea, select') !== null;
     }
 
     handleTrackRowClick(event, trackId) {
@@ -807,6 +851,9 @@ class SurveillanceDashboard {
                 this.selectedTracks.add(trackId);
                 console.log(`Selected track ${trackId}, total selected: ${this.selectedTracks.size}`);
             }
+            
+            // Log current selection state
+            console.log('Current selected tracks:', Array.from(this.selectedTracks));
             
             // Update the track display to show selection
             this.updateTracksDisplay();
@@ -829,19 +876,46 @@ class SurveillanceDashboard {
 
     showBattleGroupDialog() {
         console.log('Attempting to show battle group dialog...');
+        
+        // Ensure multi-select mode is disabled when dialog opens
+        this.isMultiSelecting = false;
+        document.body.classList.remove('multi-select-mode');
+        
         const dialog = document.getElementById('battle-group-dialog');
         const selectedCount = document.getElementById('selected-count');
         const selectedTracksPreview = document.getElementById('selected-tracks-preview');
+        const nameInput = document.getElementById('battle-group-name-input');
         
         if (!dialog) {
             console.error('Battle group dialog not found!');
+            console.log('Available elements:', document.querySelectorAll('[id*="battle"]'));
             return;
         }
         
-        console.log('Dialog element found, updating content...');
+        if (!selectedCount) {
+            console.error('Selected count element not found!');
+            return;
+        }
+        
+        if (!selectedTracksPreview) {
+            console.error('Selected tracks preview element not found!');
+            return;
+        }
+        
+        if (!nameInput) {
+            console.error('Battle group name input not found!');
+            return;
+        }
+        
+        console.log('All dialog elements found, updating content...');
         
         // Update dialog content
         selectedCount.textContent = this.selectedTracks.size;
+        
+        // Generate default name and set it as placeholder
+        const defaultName = `Battle Group ${String.fromCharCode(65 + this.battleGroupCounter)}`;
+        nameInput.placeholder = `Enter name or leave blank for "${defaultName}"`;
+        nameInput.value = ''; // Clear any previous value
         
         // Show preview of selected tracks
         selectedTracksPreview.innerHTML = '';
@@ -855,44 +929,184 @@ class SurveillanceDashboard {
                     <span class="text-xs text-slate-400">${track.track_type || 'Unknown'}</span>
                 `;
                 selectedTracksPreview.appendChild(trackElement);
+            } else {
+                console.log(`Track ${trackId} not found in tracks map - adding placeholder`);
+                const trackElement = document.createElement('div');
+                trackElement.className = 'flex items-center justify-between py-1';
+                trackElement.innerHTML = `
+                    <span class="text-slate-300">${trackId}</span>
+                    <span class="text-xs text-slate-400">Unknown</span>
+                `;
+                selectedTracksPreview.appendChild(trackElement);
             }
         });
         
-        // Show dialog
+        // Show dialog with additional logging
+        console.log('Removing hidden class from dialog');
         dialog.classList.remove('hidden');
+        
+        // Force display and visibility
+        dialog.style.display = 'flex';
+        dialog.style.visibility = 'visible';
+        dialog.style.opacity = '1';
+        dialog.style.zIndex = '9999';
+        
+        // Focus on the name input for better UX
+        setTimeout(() => {
+            nameInput.focus();
+            nameInput.select(); // Select any existing text for easy replacement
+        }, 150);
+        
+        // Force visibility check
+        setTimeout(() => {
+            const computedStyle = window.getComputedStyle(dialog);
+            console.log('Dialog visibility after show:', {
+                display: computedStyle.display,
+                visibility: computedStyle.visibility,
+                opacity: computedStyle.opacity,
+                zIndex: computedStyle.zIndex,
+                hasHiddenClass: dialog.classList.contains('hidden')
+            });
+        }, 50);
+        
         console.log('Battle group dialog should now be visible');
     }
 
     hideBattleGroupDialog() {
+        console.log('Hiding battle group dialog...');
         const dialog = document.getElementById('battle-group-dialog');
-        dialog.classList.add('hidden');
+        const nameInput = document.getElementById('battle-group-name-input');
+        
+        if (dialog) {
+            // Remove visible state
+            dialog.classList.add('hidden');
+            
+            // Force hide with inline styles
+            dialog.style.display = 'none';
+            dialog.style.visibility = 'hidden';
+            dialog.style.opacity = '0';
+            
+            // Clear the name input for next use
+            if (nameInput) {
+                nameInput.value = '';
+            }
+            
+            console.log('Battle group dialog hidden');
+        } else {
+            console.error('Battle group dialog not found when trying to hide');
+        }
     }
 
     bindBattleGroupEvents() {
+        console.log('Binding battle group dialog events...');
+        
         // Cancel button
-        document.getElementById('cancel-battle-group').addEventListener('click', () => {
-            this.selectedTracks.clear();
-            this.updateTracksDisplay();
-            this.hideBattleGroupDialog();
-        });
+        const cancelBtn = document.getElementById('cancel-battle-group');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                console.log('Cancel button clicked');
+                this.selectedTracks.clear();
+                this.updateTracksDisplay();
+                this.hideBattleGroupDialog();
+            });
+        } else {
+            console.error('Cancel battle group button not found!');
+        }
 
         // Confirm button
-        document.getElementById('confirm-battle-group').addEventListener('click', () => {
-            this.createBattleGroup();
+        const confirmBtn = document.getElementById('confirm-battle-group');
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', () => {
+                console.log('Confirm button clicked');
+                this.createBattleGroup();
+            });
+        } else {
+            console.error('Confirm battle group button not found!');
+        }
+        
+        // Name input field - Enter key support
+        const nameInput = document.getElementById('battle-group-name-input');
+        if (nameInput) {
+            nameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    console.log('Enter key pressed in name input - creating battle group');
+                    this.createBattleGroup();
+                }
+            });
+        }
+        
+        // Also allow clicking outside the dialog to close it
+        const dialog = document.getElementById('battle-group-dialog');
+        if (dialog) {
+            dialog.addEventListener('click', (e) => {
+                // Only close if clicking on the backdrop (not the dialog content)
+                if (e.target === dialog) {
+                    console.log('Dialog backdrop clicked - closing dialog');
+                    this.selectedTracks.clear();
+                    this.updateTracksDisplay();
+                    this.hideBattleGroupDialog();
+                }
+            });
+        }
+        
+        // Add keyboard escape support
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const dialog = document.getElementById('battle-group-dialog');
+                if (dialog && !dialog.classList.contains('hidden')) {
+                    console.log('Escape key pressed - closing dialog');
+                    this.selectedTracks.clear();
+                    this.updateTracksDisplay();
+                    this.hideBattleGroupDialog();
+                }
+            }
         });
     }
 
     createBattleGroup() {
+        console.log('Creating battle group...');
         const selectedTrackIds = Array.from(this.selectedTracks);
-        const battleGroupName = String.fromCharCode(65 + this.battleGroupCounter); // A, B, C, etc.
+        const nameInput = document.getElementById('battle-group-name-input');
+        
+        // Get custom name or use default
+        let customName = nameInput ? nameInput.value.trim() : '';
+        let battleGroupName, battleGroupId;
+        
+        if (customName) {
+            // Use custom name
+            battleGroupName = customName;
+            battleGroupId = `BG-${customName.replace(/[^a-zA-Z0-9]/g, '')}`; // Clean ID
+            console.log(`Using custom name: ${battleGroupName}`);
+        } else {
+            // Use default naming scheme
+            const defaultLetter = String.fromCharCode(65 + this.battleGroupCounter);
+            battleGroupName = `Battle Group ${defaultLetter}`;
+            battleGroupId = `BG-${defaultLetter}`;
+            console.log(`Using default name: ${battleGroupName}`);
+        }
         
         const battleGroup = {
-            id: `BG-${battleGroupName}`,
-            name: `Battle Group ${battleGroupName}`,
+            id: battleGroupId,
+            name: battleGroupName,
             tracks: selectedTrackIds,
             created: new Date().toISOString(),
             color: this.getBattleGroupColor(this.battleGroupCounter)
         };
+        
+        // Check if ID already exists (for custom names)
+        if (this.battleGroups.has(battleGroupId)) {
+            // Add a number suffix to make it unique
+            let counter = 1;
+            let newId = `${battleGroupId}-${counter}`;
+            while (this.battleGroups.has(newId)) {
+                counter++;
+                newId = `${battleGroupId}-${counter}`;
+            }
+            battleGroup.id = newId;
+            if (customName) {
+                battleGroup.name = `${battleGroupName} (${counter})`;
+            }
+        }
         
         this.battleGroups.set(battleGroup.id, battleGroup);
         this.battleGroupCounter++;
@@ -901,6 +1115,8 @@ class SurveillanceDashboard {
         this.selectedTracks.clear();
         this.updateTracksDisplay();
         this.updateBattleGroupsDisplay();
+        
+        // Hide dialog first
         this.hideBattleGroupDialog();
         
         // Show notification
@@ -910,6 +1126,8 @@ class SurveillanceDashboard {
         if (window.cesiumAdvanced && window.cesiumAdvanced.isActive()) {
             window.cesiumAdvanced.highlightBattleGroup(battleGroup);
         }
+        
+        console.log('Battle group created and dialog hidden:', battleGroup);
     }
 
     getBattleGroupColor(index) {
@@ -993,6 +1211,40 @@ class SurveillanceDashboard {
         if (battleGroup && window.cesiumAdvanced && window.cesiumAdvanced.isActive()) {
             window.cesiumAdvanced.followBattleGroup(battleGroup);
         }
+    }
+
+    showAutoRefreshIndicator() {
+        const autoRefreshIndicator = document.querySelector('.text-green-400');
+        if (autoRefreshIndicator) {
+            // Briefly highlight the auto-refresh indicator
+            const icon = autoRefreshIndicator.querySelector('i');
+            if (icon) {
+                icon.classList.add('fa-spin');
+                setTimeout(() => {
+                    icon.classList.remove('fa-spin');
+                }, 500);
+            }
+        }
+    }
+
+    testBattleGroupDialog() {
+        console.log('Testing battle group dialog...');
+        
+        // Simulate having selected tracks
+        this.selectedTracks.clear();
+        this.selectedTracks.add('TRK1000');
+        this.selectedTracks.add('TRK1001');
+        
+        console.log('Added test tracks to selection:', Array.from(this.selectedTracks));
+        
+        // Try to show the dialog
+        this.showBattleGroupDialog();
+        
+        // Test auto-close after 5 seconds for debugging
+        setTimeout(() => {
+            console.log('Auto-closing dialog after 5 seconds for testing...');
+            this.hideBattleGroupDialog();
+        }, 5000);
     }
 }
 

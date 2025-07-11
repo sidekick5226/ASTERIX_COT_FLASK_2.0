@@ -103,6 +103,8 @@ Preferred communication style: Simple, everyday language.
 - **Event System Redesign**: Completely redesigned Event Monitor and Event Log to use reliable polling-based approach instead of WebSocket (July 10, 2025)
 - **Real-time Event Display**: Event Monitor now shows live track updates with proper timestamps, track IDs, and descriptions using /api/monitor-events endpoint
 - **Dual Polling Architecture**: Tracks update every 1 second, monitor events every 2 seconds for optimal performance and responsiveness
+- **Camera System Simplified**: Removed camera mode toggle button - camera now follows tracks automatically on double-click and resets to optimal view when deselected (July 11, 2025)
+- **Daily Event Log Export**: Automated daily CSV export of event logs to `export_log_hist` folder with automatic clearing after export at midnight (July 11, 2025)
 
 ### Advanced 3D Features
 - **Terrain**: Quantized-mesh tiles with local server capability (currently using Cesium World Terrain as fallback)

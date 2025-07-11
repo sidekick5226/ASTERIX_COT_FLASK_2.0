@@ -53,6 +53,11 @@
         /* Battle group dialog animations */
         #battle-group-dialog {
             backdrop-filter: blur(4px);
+            z-index: 9999 !important;
+        }
+        
+        #battle-group-dialog:not(.hidden) {
+            display: flex !important;
         }
         
         #battle-group-dialog > div {
@@ -87,7 +92,7 @@
     <link href="https://cesium.com/downloads/cesiumjs/releases/1.104/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
     
     <!-- Custom CSS -->
-    <link href="{{ url_for('static', filename='css/dashboard.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/dashboard.css') }}?v=20250711" rel="stylesheet">
     
     {% block head %}{% endblock %}
 </head>
@@ -249,7 +254,7 @@
     <script src="{{ url_for('static', filename='js/websocket.js') }}"></script>
     <script src="{{ url_for('static', filename='js/map.js') }}"></script>
     <script src="{{ url_for('static', filename='js/cesium-advanced.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}?v=20250711"></script>
     
     {% block scripts %}{% endblock %}
 </body>

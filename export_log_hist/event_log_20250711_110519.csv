@@ -1,0 +1,31 @@
+id,track_id,event_type,description,timestamp
+1,TRK1000,Altitude Change,Track TRK1000: course change - routine update,2025-07-11T14:46:12.010120
+2,TRK1000,Communication,Track TRK1000: speed alert - routine update,2025-07-11T14:46:18.038381
+3,TRK1003,Altitude Change,Track TRK1003: speed alert - routine update,2025-07-11T14:46:36.184975
+4,TRK1006,Speed Alert,Track TRK1006: altitude change - status change,2025-07-11T14:46:48.278160
+5,TRK1007,Altitude Change,Track TRK1007: course change - normal operation,2025-07-11T14:46:52.314347
+6,TRK1000,Speed Alert,Track TRK1000: course change - routine update,2025-07-11T14:46:58.368247
+7,TRK1007,Altitude Change,Track TRK1007: communication - normal operation,2025-07-11T14:47:04.413380
+8,TRK1001,Course Change,Track TRK1001: speed alert - routine update,2025-07-11T14:47:14.476529
+9,TRK1004,Communication,Track TRK1004: speed alert - routine update,2025-07-11T14:47:18.503075
+10,TRK1008,Altitude Change,Track TRK1008: altitude change - normal operation,2025-07-11T15:02:39.937304
+11,TRK1001,Course Change,Track TRK1001: altitude change - normal operation,2025-07-11T15:02:56.703924
+12,TRK1007,Communication,Track TRK1007: communication - deviation detected,2025-07-11T15:03:09.327119
+13,TRK1001,Course Change,Track TRK1001: speed alert - routine update,2025-07-11T15:03:17.602860
+14,TRK1002,Communication,Track TRK1002: speed alert - routine update,2025-07-11T15:03:31.939771
+15,TRK1006,Altitude Change,Track TRK1006: communication - deviation detected,2025-07-11T15:03:31.939778
+16,TRK1003,Communication,Track TRK1003: course change - status change,2025-07-11T15:03:38.049486
+17,TRK1009,Speed Alert,Track TRK1009: communication - status change,2025-07-11T15:03:38.049496
+18,TRK1008,Course Change,Track TRK1008: speed alert - status change,2025-07-11T15:03:42.171454
+19,TRK1002,Communication,Track TRK1002: course change - routine update,2025-07-11T15:03:58.571774
+20,TRK1004,Communication,Track TRK1004: speed alert - deviation detected,2025-07-11T15:04:00.654519
+21,TRK1007,Speed Alert,Track TRK1007: speed alert - deviation detected,2025-07-11T15:04:00.654533
+22,TRK1009,Altitude Change,Track TRK1009: speed alert - normal operation,2025-07-11T15:04:00.654536
+23,TRK1002,Communication,Track TRK1002: altitude change - deviation detected,2025-07-11T15:04:14.905347
+24,TRK1001,Altitude Change,Track TRK1001: speed alert - deviation detected,2025-07-11T15:04:21.020126
+25,TRK1001,Speed Alert,Track TRK1001: course change - status change,2025-07-11T15:04:39.513414
+26,TRK1008,Altitude Change,Track TRK1008: communication - status change,2025-07-11T15:04:39.513424
+27,TRK1004,Course Change,Track TRK1004: communication - deviation detected,2025-07-11T15:04:43.582733
+28,TRK1005,Course Change,Track TRK1005: communication - status change,2025-07-11T15:04:43.582749
+29,TRK1005,Communication,Track TRK1005: altitude change - deviation detected,2025-07-11T15:04:51.748112
+30,TRK1004,Speed Alert,Track TRK1004: communication - deviation detected,2025-07-11T15:05:18.251690

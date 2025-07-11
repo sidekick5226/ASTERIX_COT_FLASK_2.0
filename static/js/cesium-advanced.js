@@ -109,7 +109,7 @@ class AdvancedCesiumManager {
     setupCameraControls() {
         // Custom camera controls for tactical operations
         this.viewer.scene.preRender.addEventListener(() => {
-            if (this.cameraFollowTarget && this.followMode !== 'none') {
+            if (this.cameraFollowTarget) {
                 this.updateCameraFollow();
             }
         });
@@ -119,33 +119,9 @@ class AdvancedCesiumManager {
     }
 
     addCameraControlsUI() {
-        // Add camera control buttons to the Cesium viewer's toolbar
-        const toolbar = this.viewer.cesiumWidget.toolbar;
-
-        if (!toolbar) {
-            console.warn('Cesium toolbar not available, skipping camera controls UI');
-            return;
-        }
-
-        try {
-            // Follow Camera Button
-            const followButton = document.createElement('button');
-            followButton.className = 'cesium-button cesium-toolbar-button';
-            followButton.innerHTML = '<i class="fas fa-video"></i>';
-            followButton.title = 'Follow Camera Mode';
-            followButton.onclick = () => this.toggleFollowMode();
-            toolbar.appendChild(followButton);
-
-            // Reset Camera Button
-            const resetButton = document.createElement('button');
-            resetButton.className = 'cesium-button cesium-toolbar-button';
-            resetButton.innerHTML = '<i class="fas fa-home"></i>';
-            resetButton.title = 'Reset Camera View';
-            resetButton.onclick = () => this.resetCamera();
-            toolbar.appendChild(resetButton);
-        } catch (error) {
-            console.warn('Could not add camera controls UI:', error);
-        }
+        // Camera controls are now handled directly through double-click to follow
+        // and deselection to stop following - no UI buttons needed
+        console.log('Camera controls: Double-click to follow, deselect to stop');
     }
 
     setupCoTWebSocket() {
@@ -197,11 +173,7 @@ class AdvancedCesiumManager {
                 // Entity info box will show automatically - no custom handling needed
             } else if (!selectedEntity) {
                 // Entity deselected - turn off camera follow
-                if (this.cameraFollowTarget) {
-                    console.log('Track deselected - turning off camera follow');
-                    this.cameraFollowTarget = null;
-                    this.followMode = 'none';
-                }
+                this.stopFollowCamera();
             }
         });
 
@@ -498,18 +470,32 @@ class AdvancedCesiumManager {
         console.log(`Following ${entity.name} in chase mode`);
     }
 
-    toggleFollowMode() {
-        if (!this.cameraFollowTarget) {
-            alert('Please select a unit first');
-            return;
+    stopFollowCamera() {
+        if (this.cameraFollowTarget) {
+            console.log('Stopping camera follow mode and resetting to optimal view');
+            this.cameraFollowTarget = null;
+            
+            // Clear any selected entity to ensure clean state
+            this.viewer.selectedEntity = undefined;
+            
+            // Restore all camera controls to free camera mode
+            this.viewer.scene.screenSpaceCameraController.enableRotate = true;
+            this.viewer.scene.screenSpaceCameraController.enableTranslate = true;
+            this.viewer.scene.screenSpaceCameraController.enableZoom = true;
+            this.viewer.scene.screenSpaceCameraController.enableTilt = true;
+            this.viewer.scene.screenSpaceCameraController.enableLook = true;
+            
+            // Reset to optimal tactical view
+            this.viewer.camera.flyTo({
+                destination: Cesium.Cartesian3.fromDegrees(-100.0, 45.0, 20000000),
+                orientation: {
+                    heading: 0.0,
+                    pitch: -Cesium.Math.PI_OVER_TWO,
+                    roll: 0.0
+                },
+                duration: 2.0
+            });
         }
-
-        const modes = ['none', 'chase', 'firstPerson', 'orbital'];
-        const currentIndex = modes.indexOf(this.followMode);
-        const nextIndex = (currentIndex + 1) % modes.length;
-        this.followMode = modes[nextIndex];
-
-        console.log(`Camera mode: ${this.followMode}`);
     }
 
     updateCameraFollow() {
@@ -520,17 +506,8 @@ class AdvancedCesiumManager {
         const targetPosition = this.cameraFollowTarget.position.getValue(Cesium.JulianDate.now());
         if (!targetPosition) return;
 
-        switch (this.followMode) {
-            case 'chase':
-                this.updateChaseCamera(targetPosition);
-                break;
-            case 'firstPerson':
-                this.updateFirstPersonCamera(targetPosition);
-                break;
-            case 'orbital':
-                this.updateOrbitalCamera(targetPosition);
-                break;
-        }
+        // Always use chase camera mode
+        this.updateChaseCamera(targetPosition);
     }
 
     updateChaseCamera(targetPosition) {
@@ -540,67 +517,6 @@ class AdvancedCesiumManager {
         const cameraPosition = Cesium.Cartesian3.add(targetPosition, offset, new Cesium.Cartesian3());
 
         camera.lookAt(cameraPosition, targetPosition, Cesium.Cartesian3.UNIT_Z);
-    }
-
-    updateFirstPersonCamera(targetPosition) {
-        // First person camera - from the target's perspective
-        const camera = this.viewer.camera;
-        const offset = new Cesium.Cartesian3(0, 0, 50); // Slightly above target
-        const cameraPosition = Cesium.Cartesian3.add(targetPosition, offset, new Cesium.Cartesian3());
-
-        // Look forward based on unit's heading
-        const heading = this.getTargetHeading();
-        const direction = new Cesium.Cartesian3(
-            Math.sin(heading), 
-            Math.cos(heading), 
-            0
-        );
-        const lookTarget = Cesium.Cartesian3.add(cameraPosition, direction, new Cesium.Cartesian3());
-
-        camera.lookAt(cameraPosition, lookTarget, Cesium.Cartesian3.UNIT_Z);
-    }
-
-    updateOrbitalCamera(targetPosition) {
-        // Orbital camera - circle around the target
-        const camera = this.viewer.camera;
-        const time = Date.now() * 0.001; // Convert to seconds
-        const radius = 1000;
-        const height = 300;
-
-        const x = targetPosition.x + radius * Math.cos(time * 0.1);
-        const y = targetPosition.y + radius * Math.sin(time * 0.1);
-        const z = targetPosition.z + height;
-
-        const cameraPosition = new Cesium.Cartesian3(x, y, z);
-        camera.lookAt(cameraPosition, targetPosition, Cesium.Cartesian3.UNIT_Z);
-    }
-
-    getTargetHeading() {
-        if (this.cameraFollowTarget.properties && this.cameraFollowTarget.properties.trackData) {
-            const track = this.cameraFollowTarget.properties.trackData.getValue();
-            return Cesium.Math.toRadians(track.heading || 0);
-        }
-        return 0;
-    }
-
-    resetCamera() {
-        this.cameraFollowTarget = null;
-        this.followMode = 'none';
-
-        // Clear any selected entity to ensure clean state
-        this.viewer.selectedEntity = undefined;
-
-        // Reset to initial tactical view
-        this.viewer.camera.setView({
-            destination: Cesium.Cartesian3.fromDegrees(-95.0, 39.0, 2000000),
-            orientation: {
-                heading: 0.0,
-                pitch: -Cesium.Math.PI_OVER_SIX,
-                roll: 0.0
-            }
-        });
-
-        console.log('Camera reset to tactical view');
     }
 
     // Method to switch to 3D mode

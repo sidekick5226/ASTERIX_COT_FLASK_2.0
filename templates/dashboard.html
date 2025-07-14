@@ -27,7 +27,24 @@
         <div id="map-container" class="flex-1 relative h-64 lg:h-full">
             <div id="leaflet-map" class="absolute inset-0"></div>
             <div id="cesium-map" class="absolute inset-0 hidden"></div>
-
+            
+            <!-- Map Help Tooltip -->
+            <div class="absolute top-4 right-4 z-10">
+                <div class="relative group">
+                    <button class="bg-slate-700 hover:bg-slate-600 text-white p-2 rounded-full text-xs border border-slate-600 transition-colors">
+                        <i class="fas fa-question text-xs"></i>
+                    </button>
+                    <div class="absolute right-0 top-12 w-72 bg-slate-900 text-white text-xs rounded-lg p-3 shadow-lg hidden group-hover:block z-50">
+                        <div class="font-medium mb-1">Map Battle Group Creation:</div>
+                        <div class="text-slate-300">
+                            • Hold <kbd class="bg-slate-700 px-1 rounded">Shift</kbd> and click tracks on the map to select multiple tracks<br>
+                            • Orange highlighting shows selected tracks<br>
+                            • Release <kbd class="bg-slate-700 px-1 rounded">Shift</kbd> to open battle group dialog<br>
+                            • Works in both 2D Standard and 3D Battle views
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Active Tracks Panel -->
@@ -36,6 +53,17 @@
                 <h6 class="text-sm font-semibold text-white flex items-center">
                     <i class="fas fa-list mr-2"></i> Active Tracks
                     <span class="bg-blue-600 text-white px-2 py-0.5 rounded text-xs font-medium ml-2" id="total-tracks">0</span>
+                    <div class="ml-2 relative group">
+                        <i class="fas fa-info-circle text-slate-400 hover:text-orange-400 cursor-help text-xs"></i>
+                        <div class="absolute left-0 top-6 w-64 bg-slate-900 text-white text-xs rounded-lg p-3 shadow-lg hidden group-hover:block z-50">
+                            <div class="font-medium mb-1">Battle Group Creation:</div>
+                            <div class="text-slate-300">
+                                • Hold <kbd class="bg-slate-700 px-1 rounded">Shift</kbd> and click tracks (table or map) to multi-select<br>
+                                • Release <kbd class="bg-slate-700 px-1 rounded">Shift</kbd> to create battle group<br>
+                                • Works in both 2D Standard and 3D Battle views
+                            </div>
+                        </div>
+                    </div>
                 </h6>
             </div>
             
@@ -120,10 +148,7 @@
                 </select>
             </div>
             <div class="flex items-end space-x-2">
-                <button class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" id="apply-monitor-filters-btn">
-                    <i class="fas fa-filter mr-1"></i> Apply
-                </button>
-                <button class="flex-1 bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" id="clear-monitor-filters-btn">
+                <button class="w-full bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" id="clear-monitor-filters-btn">
                     <i class="fas fa-times mr-1"></i> Clear
                 </button>
             </div>
@@ -192,10 +217,7 @@
                 </select>
             </div>
             <div class="flex items-end space-x-2">
-                <button class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" id="filter-log-btn">
-                    <i class="fas fa-search mr-1"></i> Filter
-                </button>
-                <button class="flex-1 bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" id="clear-filters-btn">
+                <button class="w-full bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" id="clear-filters-btn">
                     <i class="fas fa-times mr-1"></i> Clear
                 </button>
             </div>

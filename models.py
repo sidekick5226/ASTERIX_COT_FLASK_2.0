@@ -2,11 +2,36 @@ from datetime import datetime
 from sqlalchemy import func
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import UserMixin
 
 class Base(DeclarativeBase):
     pass
 
 db = SQLAlchemy(model_class=Base)
+
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(120), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_login = db.Column(db.DateTime)
+    
+    def set_password(self, password):
+        """Hash and set password"""
+        self.password_hash = generate_password_hash(password)
+    
+    def check_password(self, password):
+        """Check if provided password matches hash"""
+        return check_password_hash(self.password_hash, password)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'username': self.username,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'last_login': self.last_login.isoformat() if self.last_login else None
+        }
 
 class Track(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -44,6 +69,7 @@ class Event(db.Model):
     track_id = db.Column(db.String(50), nullable=False)
     event_type = db.Column(db.String(50), nullable=False)
     description = db.Column(db.Text)
+    user_notes = db.Column(db.Text)  # User-editable notes/details
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     
     def to_dict(self):
@@ -52,6 +78,7 @@ class Event(db.Model):
             'track_id': self.track_id,
             'event_type': self.event_type,
             'description': self.description,
+            'user_notes': self.user_notes,
             'timestamp': self.timestamp.isoformat() if self.timestamp else None
         }
 

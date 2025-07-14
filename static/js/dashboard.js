@@ -10,6 +10,7 @@ class SurveillanceDashboard {
         this.isBattleMode = false;
         this.updateInterval = null;
         this.monitorInterval = null; // For Event Monitor auto-refresh
+        this.eventLogInterval = null; // For Event Log auto-refresh
         this.selectedTracks = new Set(); // For multi-track selection
         this.battleGroups = new Map(); // Battle Groups storage
         this.battleGroupCounter = 0; // Counter for naming battle groups
@@ -47,6 +48,18 @@ class SurveillanceDashboard {
             this.onTrackUpdate(tracks);
         });
 
+        // Handle real-time event notes updates
+        this.socket.on('event_notes_updated', (data) => {
+            console.log('Received event_notes_updated:', data);
+            this.handleEventNotesUpdate(data);
+        });
+
+        // Handle real-time new events
+        this.socket.on('new_event', (event) => {
+            console.log('Received new_event:', event);
+            this.handleNewEvent(event);
+        });
+
         // Handle connection status
         this.socket.on('status', (data) => {
             console.log('Status update:', data.msg);
@@ -81,23 +94,26 @@ class SurveillanceDashboard {
 
         // Event handlers
         document.getElementById('refresh-events-btn').addEventListener('click', () => this.refreshEvents());
-        document.getElementById('filter-log-btn').addEventListener('click', () => this.filterEventLog());
         document.getElementById('clear-filters-btn').addEventListener('click', () => this.clearEventLogFilters());
         document.getElementById('export-log-btn').addEventListener('click', () => this.exportEventLog());
 
-        // Event Monitor filter handlers
-        document.getElementById('apply-monitor-filters-btn').addEventListener('click', () => this.applyMonitorFilters());
-        document.getElementById('clear-monitor-filters-btn').addEventListener('click', () => this.clearMonitorFilters());
+        // Event Log filter handlers - automatic filtering on change
+        document.getElementById('start-date').addEventListener('change', () => this.filterEventLog());
+        document.getElementById('end-date').addEventListener('change', () => this.filterEventLog());
+        document.getElementById('event-type-filter').addEventListener('change', () => this.filterEventLog());
+
+        // Event Monitor filter handlers - automatic filtering on change
+        document.getElementById('monitor-event-type-filter').addEventListener('change', () => this.applyMonitorFilters());
+        document.getElementById('monitor-track-type-filter').addEventListener('change', () => this.applyMonitorFilters());
         
-        // Add debounced input for track filter
+        // Add debounced input for track ID filter
         let trackFilterTimeout;
         document.getElementById('monitor-track-filter').addEventListener('input', () => {
             clearTimeout(trackFilterTimeout);
             trackFilterTimeout = setTimeout(() => this.applyMonitorFilters(), 300);
         });
         
-        document.getElementById('monitor-event-type-filter').addEventListener('change', () => this.applyMonitorFilters());
-        document.getElementById('monitor-track-type-filter').addEventListener('change', () => this.applyMonitorFilters());
+        document.getElementById('clear-monitor-filters-btn').addEventListener('click', () => this.clearMonitorFilters());
 
         // Network configuration
         this.bindNetworkConfigEvents();
@@ -131,6 +147,9 @@ class SurveillanceDashboard {
             // Initialize empty tracks display
             this.tracks.clear();
             this.updateTracksDisplay();
+            
+            // Load initial Event Log data
+            await this.loadEventLog();
         } catch (error) {
             console.error('Error loading initial data:', error);
             // Don't show popup notification to prevent spam
@@ -180,6 +199,9 @@ class SurveillanceDashboard {
         if (this.monitorInterval) {
             clearInterval(this.monitorInterval);
         }
+        if (this.eventLogInterval) {
+            clearInterval(this.eventLogInterval);
+        }
 
         // Track updates every 1 second for responsiveness
         this.updateInterval = setInterval(async () => {
@@ -193,7 +215,12 @@ class SurveillanceDashboard {
             await this.loadMonitorEvents();
         }, 1500);
 
-        console.log('Started periodic updates - Event Monitor will auto-refresh every 1.5 seconds');
+        // Event Log updates every 3 seconds for history
+        this.eventLogInterval = setInterval(async () => {
+            await this.loadEventLog();
+        }, 3000);
+
+        console.log('Started periodic updates - Event Monitor will auto-refresh every 1.5 seconds, Event Log every 3 seconds');
     }
 
     stopPeriodicUpdates() {
@@ -204,6 +231,10 @@ class SurveillanceDashboard {
         if (this.monitorInterval) {
             clearInterval(this.monitorInterval);
             this.monitorInterval = null;
+        }
+        if (this.eventLogInterval) {
+            clearInterval(this.eventLogInterval);
+            this.eventLogInterval = null;
         }
     }
 
@@ -588,9 +619,12 @@ class SurveillanceDashboard {
                 <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs font-semibold bg-blue-100 text-blue-800">${event.event_type}</span></td>
                 <td class="px-4 py-2">${event.description}</td>
                 <td class="px-4 py-2">
-                    <button class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs" onclick="dashboard.viewEventDetails(${event.id})">
+                    <button class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs transition-colors" 
+                            onclick="dashboard.editEventDetails(${event.id})" 
+                            title="Add/Edit Details">
                         <i class="fas fa-info-circle"></i>
                     </button>
+                    ${event.user_notes ? `<span class="ml-2 text-red-500" title="Has user notes"><i class="fas fa-exclamation-triangle"></i></span>` : ''}
                 </td>
             `;
             tbody.appendChild(row);
@@ -639,12 +673,6 @@ class SurveillanceDashboard {
         console.log('Filtering events:', { startDate, endDate, eventType });
         
         try {
-            // Show loading state
-            const filterBtn = document.getElementById('filter-log-btn');
-            const originalHTML = filterBtn.innerHTML;
-            filterBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Filtering...';
-            filterBtn.disabled = true;
-            
             // Build query parameters
             const params = new URLSearchParams();
             params.append('page', this.currentPage);
@@ -667,18 +695,9 @@ class SurveillanceDashboard {
             const totalPages = data.pages;
             this.showNotification(`Event log filtered - ${filterCount} events found (${totalPages} pages)`, 'success');
             
-            // Restore button
-            filterBtn.innerHTML = originalHTML;
-            filterBtn.disabled = false;
-            
         } catch (error) {
             console.error('Error filtering event log:', error);
             this.showNotification('Error filtering event log', 'error');
-            
-            // Restore button on error
-            const filterBtn = document.getElementById('filter-log-btn');
-            filterBtn.innerHTML = '<i class="fas fa-search mr-1"></i> Filter';
-            filterBtn.disabled = false;
         }
     }
 
@@ -880,12 +899,209 @@ class SurveillanceDashboard {
         }
     }
 
-    viewEventDetails(eventId) {
-        const event = this.events.find(e => e.id === eventId);
-        if (event) {
-            alert(`Event Details:\nID: ${event.id}\nTrack: ${event.track_id}\nType: ${event.event_type}\nTime: ${event.timestamp}\nDescription: ${event.description}`);
+    async editEventDetails(eventId) {
+        try {
+            // First, get the current notes for this event
+            const response = await fetch(`/api/events/${eventId}/notes`);
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to load event details');
+            }
+            
+            const currentNotes = data.notes || '';
+            const event = data.event;
+            
+            // Create a modal dialog for editing notes
+            const modal = this.createEventDetailsModal(event, currentNotes);
+            document.body.appendChild(modal);
+            
+            // Show the modal
+            modal.style.display = 'flex';
+            
+            // Focus on the textarea
+            const textarea = modal.querySelector('textarea');
+            if (textarea) {
+                textarea.focus();
+                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+            }
+            
+        } catch (error) {
+            console.error('Error loading event details:', error);
+            this.showNotification('Failed to load event details: ' + error.message, 'error');
         }
     }
+
+    createEventDetailsModal(event, currentNotes) {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        modal.style.display = 'none';
+        
+        modal.innerHTML = `
+            <div class="bg-slate-800 rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="text-xl font-bold text-white">Event Details</h3>
+                    <button class="text-gray-400 hover:text-white text-xl" onclick="this.closest('.fixed').remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="mb-4 space-y-3">
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <label class="text-gray-300 font-medium">Track ID:</label>
+                            <p class="text-white">${event.track_id}</p>
+                        </div>
+                        <div>
+                            <label class="text-gray-300 font-medium">Event Type:</label>
+                            <p class="text-white">${event.event_type}</p>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="text-gray-300 font-medium">Timestamp:</label>
+                            <p class="text-white">${new Date(event.timestamp).toLocaleString()}</p>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="text-gray-300 font-medium">Description:</label>
+                            <p class="text-white">${event.description}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="text-gray-300 font-medium mb-2 block">Additional Notes:</label>
+                    <textarea 
+                        class="w-full h-32 p-3 bg-slate-700 text-white rounded border border-slate-600 focus:border-blue-500 focus:outline-none resize-none"
+                        placeholder="Add your notes or details about this event..."
+                        maxlength="1000"
+                    >${currentNotes}</textarea>
+                    <div class="text-xs text-gray-400 mt-1">
+                        <span id="char-count">${currentNotes.length}</span>/1000 characters
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors" 
+                            onclick="this.closest('.fixed').remove()">
+                        Cancel
+                    </button>
+                    <button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors" 
+                            onclick="dashboard.saveEventNotes(${event.id}, this)">
+                        Save Notes
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Add character counter
+        const textarea = modal.querySelector('textarea');
+        const charCount = modal.querySelector('#char-count');
+        
+        textarea.addEventListener('input', () => {
+            charCount.textContent = textarea.value.length;
+        });
+        
+        // Close modal when clicking outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+        
+        // Close modal on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal.parentNode) {
+                modal.remove();
+            }
+        });
+        
+        return modal;
+    }
+
+    async saveEventNotes(eventId, button) {
+        const modal = button.closest('.fixed');
+        const textarea = modal.querySelector('textarea');
+        const notes = textarea.value.trim();
+        
+        // Show loading state
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        
+        try {
+            const response = await fetch(`/api/events/${eventId}/notes`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ notes: notes })
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to save notes');
+            }
+            
+            // Close modal
+            modal.remove();
+            
+            // Show success notification
+            this.showNotification('Event notes saved successfully!', 'success');
+            
+            // Refresh the event log display
+            this.loadEventLog();
+            
+        } catch (error) {
+            console.error('Error saving event notes:', error);
+            this.showNotification('Failed to save notes: ' + error.message, 'error');
+            
+            // Reset button state
+            button.disabled = false;
+            button.innerHTML = 'Save Notes';
+        }
+    }
+
+    handleEventNotesUpdate(data) {
+        console.log('Handling event notes update:', data);
+        
+        // Find the event row in the current display
+        const eventRows = document.querySelectorAll('#events-log-body tr');
+        
+        eventRows.forEach(row => {
+            // Check if this row contains a button for the updated event
+            const button = row.querySelector(`[onclick*="${data.event_id}"]`);
+            if (button) {
+                // Update the details cell
+                const detailsCell = button.closest('td');
+                if (detailsCell) {
+                    // Update the button and add/remove notes indicator
+                    const hasNotes = data.notes && data.notes.trim().length > 0;
+                    const notesIndicator = detailsCell.querySelector('.text-red-500');
+                    
+                    if (hasNotes) {
+                        // Add notes indicator if it doesn't exist
+                        if (!notesIndicator) {
+                            const indicator = document.createElement('span');
+                            indicator.className = 'ml-2 text-red-500';
+                            indicator.title = 'Has user notes';
+                            indicator.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+                            detailsCell.appendChild(indicator);
+                        }
+                    } else {
+                        // Remove notes indicator if notes are empty
+                        if (notesIndicator) {
+                            notesIndicator.remove();
+                        }
+                    }
+                }
+                
+                // Show a subtle notification for other users
+                this.showNotification(`Event notes updated for ${data.event_id}`, 'info');
+                return;
+            }
+        });
+    }
+
+    // ...existing code...
 
     onTrackUpdate(tracks) {
         console.log('onTrackUpdate called with', tracks.length, 'tracks');
@@ -968,13 +1184,21 @@ class SurveillanceDashboard {
     bindMultiSelectEvents() {
         console.log('Binding multi-select events...');
         
-        // Track shift key state
+        // Track shift key state globally
         document.addEventListener('keydown', (e) => {
             // Don't activate multi-select mode if dialog is open or if user is typing in an input field
             if (e.key === 'Shift' && !this.isDialogOpen() && !this.isTypingInInput(e.target)) {
                 console.log('Shift key pressed - entering multi-select mode');
                 this.isMultiSelecting = true;
                 document.body.classList.add('multi-select-mode');
+                
+                // Add visual indicator for map selection
+                if (window.mapManager) {
+                    const mapContainer = document.getElementById('map-container');
+                    if (mapContainer) {
+                        mapContainer.style.cursor = 'crosshair';
+                    }
+                }
             }
         });
 
@@ -984,6 +1208,14 @@ class SurveillanceDashboard {
                 console.log('Shift key released - exiting multi-select mode');
                 this.isMultiSelecting = false;
                 document.body.classList.remove('multi-select-mode');
+                
+                // Remove visual indicator
+                if (window.mapManager) {
+                    const mapContainer = document.getElementById('map-container');
+                    if (mapContainer) {
+                        mapContainer.style.cursor = '';
+                    }
+                }
                 
                 // Show battle group dialog if we have multiple tracks selected
                 if (this.selectedTracks.size > 1) {
@@ -996,6 +1228,12 @@ class SurveillanceDashboard {
                     }, 100);
                 } else {
                     console.log(`Only ${this.selectedTracks.size} tracks selected - dialog not shown`);
+                    // Clear selection and highlighting if not enough tracks
+                    this.selectedTracks.clear();
+                    this.updateTracksDisplay();
+                    if (window.mapManager) {
+                        window.mapManager.updateTrackHighlighting();
+                    }
                 }
             }
         });
@@ -1038,8 +1276,11 @@ class SurveillanceDashboard {
             // Update the track display to show selection
             this.updateTracksDisplay();
             
-            // Update map highlighting if in 3D mode
-            if (window.cesiumAdvanced && window.cesiumAdvanced.isActive()) {
+            // Update map highlighting consistently
+            if (window.mapManager && window.mapManager.updateTrackHighlighting) {
+                window.mapManager.updateTrackHighlighting();
+            } else if (window.cesiumAdvanced && window.cesiumAdvanced.isActive()) {
+                // Fallback to direct highlighting update
                 window.cesiumAdvanced.highlightSelectedTracks(Array.from(this.selectedTracks));
             }
         } else {
@@ -1187,6 +1428,10 @@ class SurveillanceDashboard {
                 console.log('Cancel button clicked');
                 this.selectedTracks.clear();
                 this.updateTracksDisplay();
+                // Remove highlighting from map
+                if (window.mapManager) {
+                    window.mapManager.updateTrackHighlighting();
+                }
                 this.hideBattleGroupDialog();
             });
         } else {
@@ -1224,6 +1469,10 @@ class SurveillanceDashboard {
                     console.log('Dialog backdrop clicked - closing dialog');
                     this.selectedTracks.clear();
                     this.updateTracksDisplay();
+                    // Remove highlighting from map
+                    if (window.mapManager) {
+                        window.mapManager.updateTrackHighlighting();
+                    }
                     this.hideBattleGroupDialog();
                 }
             });
@@ -1237,6 +1486,10 @@ class SurveillanceDashboard {
                     console.log('Escape key pressed - closing dialog');
                     this.selectedTracks.clear();
                     this.updateTracksDisplay();
+                    // Remove highlighting from map
+                    if (window.mapManager) {
+                        window.mapManager.updateTrackHighlighting();
+                    }
                     this.hideBattleGroupDialog();
                 }
             }
@@ -1295,6 +1548,11 @@ class SurveillanceDashboard {
         this.selectedTracks.clear();
         this.updateTracksDisplay();
         this.updateBattleGroupsDisplay();
+        
+        // Remove highlighting from map
+        if (window.mapManager) {
+            window.mapManager.updateTrackHighlighting();
+        }
         
         // Hide dialog first
         this.hideBattleGroupDialog();
@@ -1372,9 +1630,14 @@ class SurveillanceDashboard {
             this.updateBattleGroupsDisplay();
             this.showNotification(`${battleGroup.name} disbanded`, 'info');
             
-            // Update map
+            // Clear highlighting from map
             if (window.cesiumAdvanced && window.cesiumAdvanced.isActive()) {
                 window.cesiumAdvanced.clearBattleGroupHighlight(battleGroupId);
+            }
+            
+            // Also clear any current selection highlighting if these tracks are selected
+            if (window.mapManager) {
+                window.mapManager.updateTrackHighlighting();
             }
         }
     }
@@ -1456,6 +1719,19 @@ class SurveillanceDashboard {
         
         // Apply filters (which will now show all events and tracks)
         this.applyMonitorFilters();
+    }
+
+    handleNewEvent(event) {
+        console.log('Handling new event:', event);
+        
+        // Add the new event to the events array (at the beginning for newest first)
+        this.events.unshift(event);
+        
+        // Refresh the event log display to show the new event
+        this.loadEventLog();
+        
+        // Show a notification for the new event
+        this.showNotification(`New event: ${event.event_type} for ${event.track_id}`, 'info');
     }
 }
 

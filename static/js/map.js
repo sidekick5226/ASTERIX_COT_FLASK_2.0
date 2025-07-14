@@ -272,6 +272,12 @@ class MapManager {
         // Add popup with track details
         const popupContent = this.createPopupContent(track);
         marker.bindPopup(popupContent);
+        
+        // Add click event for track selection
+        marker.on('click', (e) => {
+            this.onTrackClick(track.track_id, e.originalEvent);
+        });
+        
         return marker;
     }
 
@@ -404,6 +410,9 @@ class MapManager {
         console.log('Switching to 3D Battle View...');
         this.is3DMode = true;
 
+        // Clear any existing track selections
+        this.clearTrackSelections();
+
         // Hide Leaflet map and show Cesium map
         const leafletContainer = document.getElementById('leaflet-map');
         const cesiumContainer = document.getElementById('cesium-map');
@@ -457,6 +466,9 @@ class MapManager {
         console.log('Switching to 2D Standard View...');
         this.is3DMode = false;
 
+        // Clear any existing track selections
+        this.clearTrackSelections();
+
         // Show Leaflet map and hide Cesium map
         const leafletContainer = document.getElementById('leaflet-map');
         const cesiumContainer = document.getElementById('cesium-map');
@@ -472,11 +484,18 @@ class MapManager {
             modeDisplay.textContent = '2D Standard';
         }
 
+        // Hide advanced cesium
+        if (window.advancedCesium) {
+            window.advancedCesium.hide();
+        }
+
         // Refresh Leaflet map
         if (this.leafletMap) {
             setTimeout(() => {
                 this.leafletMap.invalidateSize();
                 this.updateLeafletTracks(this.tracks);
+                // Update highlighting if there are selected tracks
+                this.updateTrackHighlighting();
                 console.log('Resizing Leaflet map and updating tracks...');
             }, 100);
         }
@@ -529,6 +548,83 @@ class MapManager {
             if (marker) {
                 marker.openPopup();
             }
+        }
+    }
+
+    // Track selection functionality for battle group creation
+    onTrackClick(trackId, event) {
+        // Check if shift is pressed and dashboard is available
+        if (event.shiftKey && window.dashboard) {
+            // Prevent default marker popup
+            event.preventDefault();
+            event.stopPropagation();
+            
+            // Handle track selection for battle group creation
+            if (window.dashboard.isMultiSelecting) {
+                if (window.dashboard.selectedTracks.has(trackId)) {
+                    window.dashboard.selectedTracks.delete(trackId);
+                } else {
+                    window.dashboard.selectedTracks.add(trackId);
+                }
+                
+                // Update highlighting
+                this.updateTrackHighlighting();
+                
+                // Update dashboard display
+                window.dashboard.updateTracksDisplay();
+                
+                console.log(`Track ${trackId} ${window.dashboard.selectedTracks.has(trackId) ? 'selected' : 'deselected'} from map`);
+            }
+        }
+    }
+
+    updateTrackHighlighting() {
+        if (!window.dashboard) return;
+        
+        const selectedTracks = Array.from(window.dashboard.selectedTracks);
+        
+        if (this.is3DMode && window.advancedCesium && window.advancedCesium.isActive()) {
+            // Update 3D highlighting
+            window.advancedCesium.highlightSelectedTracks(selectedTracks);
+        } else if (this.leafletMap) {
+            // Update 2D highlighting
+            this.trackMarkers.forEach((marker, trackId) => {
+                const isSelected = selectedTracks.includes(trackId);
+                const markerElement = marker.getElement();
+                
+                if (markerElement) {
+                    if (isSelected) {
+                        markerElement.style.filter = 'brightness(1.5) drop-shadow(0 0 8px orange)';
+                        markerElement.style.transform = 'scale(1.2)';
+                    } else {
+                        markerElement.style.filter = '';
+                        markerElement.style.transform = '';
+                    }
+                }
+            });
+        }
+    }
+
+    // Clear all track selections when switching modes
+    clearTrackSelections() {
+        if (window.dashboard) {
+            window.dashboard.selectedTracks.clear();
+            window.dashboard.updateTracksDisplay();
+        }
+        
+        // Clear highlighting in both modes
+        if (this.leafletMap) {
+            this.trackMarkers.forEach((marker, trackId) => {
+                const markerElement = marker.getElement();
+                if (markerElement) {
+                    markerElement.style.filter = '';
+                    markerElement.style.transform = '';
+                }
+            });
+        }
+        
+        if (window.advancedCesium) {
+            window.advancedCesium.highlightSelectedTracks([]);
         }
     }
 

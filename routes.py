@@ -1,7 +1,8 @@
-from flask import render_template, request, jsonify
+from flask import render_template, request, jsonify, redirect, url_for, flash, session
 from flask_socketio import emit
+from flask_login import login_user, logout_user, login_required, current_user
 from app import app, socketio
-from models import Track, Event, NetworkConfig, db
+from models import Track, Event, NetworkConfig, User, db
 from datetime import datetime, timedelta
 import json
 import math
@@ -40,7 +41,7 @@ def export_event_log_to_csv(clear_after_export=False):
         if events:
             # Write events to CSV
             with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
-                fieldnames = ['id', 'track_id', 'event_type', 'description', 'timestamp']
+                fieldnames = ['id', 'track_id', 'event_type', 'description', 'user_notes', 'timestamp']
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                 
                 # Write header
@@ -53,6 +54,7 @@ def export_event_log_to_csv(clear_after_export=False):
                         'track_id': event.track_id,
                         'event_type': event.event_type,
                         'description': event.description,
+                        'user_notes': event.user_notes or '',  # Include user notes, empty string if None
                         'timestamp': event.timestamp.isoformat() if event.timestamp else ''
                     })
             
@@ -98,12 +100,48 @@ def start_daily_export_scheduler():
 # Start the scheduler when the module loads
 start_daily_export_scheduler()
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Login route"""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        if not username or not password:
+            flash('Username and password are required.', 'error')
+            return render_template('login.html')
+        
+        user = User.query.filter_by(username=username).first()
+        
+        if user and user.check_password(password):
+            login_user(user)
+            user.last_login = datetime.utcnow()
+            db.session.commit()
+            
+            # Redirect to next page or dashboard
+            next_page = request.args.get('next')
+            return redirect(next_page) if next_page else redirect(url_for('dashboard'))
+        else:
+            flash('Invalid username or password.', 'error')
+    
+    return render_template('login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    """Logout route"""
+    logout_user()
+    flash('You have been logged out.', 'info')
+    return redirect(url_for('login'))
+
 @app.route('/')
+@login_required
 def dashboard():
     """Main dashboard route"""
     return render_template('dashboard.html')
 
 @app.route('/api/tracks')
+@login_required
 def get_tracks():
     """Get all active tracks"""
     track_type = request.args.get('type', '')
@@ -124,6 +162,7 @@ def get_track(track_id):
     return jsonify({'error': 'Track not found'}), 404
 
 @app.route('/api/tracks/clear', methods=['POST'])
+@login_required
 def clear_tracks():
     """Clear all tracks from the system"""
     try:
@@ -143,6 +182,7 @@ def clear_tracks():
         }), 500
 
 @app.route('/api/tracks/generate', methods=['POST'])
+@login_required
 def generate_tracks():
     """Generate new simulated tracks"""
     try:
@@ -212,6 +252,61 @@ def get_events():
             'event_type': event_type
         }
     })
+
+@app.route('/api/events/<int:event_id>/notes', methods=['PUT'])
+def update_event_notes(event_id):
+    """Update user notes for a specific event"""
+    try:
+        data = request.get_json()
+        if not data or 'notes' not in data:
+            return jsonify({
+                'status': 'error',
+                'message': 'Notes data required'
+            }), 400
+        
+        # Find the event
+        event = Event.query.get_or_404(event_id)
+        
+        # Update user notes
+        event.user_notes = data['notes']
+        db.session.commit()
+        
+        # Emit real-time update to all connected clients
+        socketio.emit('event_notes_updated', {
+            'event_id': event_id,
+            'notes': data['notes'],
+            'timestamp': datetime.now().isoformat()
+        })
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Event notes updated successfully',
+            'event': event.to_dict()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@app.route('/api/events/<int:event_id>/notes', methods=['GET'])
+def get_event_notes(event_id):
+    """Get user notes for a specific event"""
+    try:
+        event = Event.query.get_or_404(event_id)
+        return jsonify({
+            'status': 'success',
+            'notes': event.user_notes or '',
+            'event': event.to_dict()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
 
 @app.route('/api/monitor-events')
 def get_monitor_events():
@@ -399,6 +494,7 @@ def update_tracks_realtime():
             with app.app_context():
                 tracks = Track.query.filter_by(status='Active').all()
                 updated_tracks = []
+                new_events = []  # Initialize new_events list here
                 
                 for track in tracks:
                     # Realistic movement based on speed and heading
@@ -454,8 +550,14 @@ def update_tracks_realtime():
                             description=f'Track {track.track_id}: {random.choice(log_event_types).lower()} - {random.choice(["routine update", "deviation detected", "normal operation", "status change"])}'
                         )
                         db.session.add(event)
+                        new_events.append(event)
                 
                 db.session.commit()
+                
+                # Emit new events to all connected clients
+                if new_events:
+                    for event in new_events:
+                        socketio.emit('new_event', event.to_dict())
                 
                 # Emit track updates to all connected clients
                 socketio.emit('track_update', updated_tracks)
@@ -604,6 +706,7 @@ def get_cot_batch():
 
 # API endpoints for surveillance control
 @app.route('/api/surveillance/start', methods=['POST'])
+@login_required
 def start_surveillance_api():
     """Start surveillance tracking"""
     global tracking_active, tracking_thread
@@ -637,6 +740,7 @@ def start_surveillance_api():
         })
 
 @app.route('/api/surveillance/stop', methods=['POST'])
+@login_required
 def stop_surveillance_api():
     """Stop surveillance tracking"""
     if stop_surveillance():

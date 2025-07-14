@@ -340,6 +340,37 @@ class AdvancedCesiumManager {
             }
         });
 
+        // Handle single clicks for track selection (with shift key)
+        this.viewer.cesiumWidget.canvas.addEventListener('click', (event) => {
+            if (event.shiftKey && window.dashboard) {
+                const pickedEntity = this.viewer.scene.pick(event.position);
+                if (pickedEntity && pickedEntity.id && this.unitEntities.has(pickedEntity.id.id)) {
+                    // Extract track ID from entity ID (format: unit_TRACK_ID)
+                    const trackId = pickedEntity.id.id.replace('unit_', '');
+                    
+                    // Handle track selection for battle group creation
+                    if (window.dashboard.isMultiSelecting) {
+                        if (window.dashboard.selectedTracks.has(trackId)) {
+                            window.dashboard.selectedTracks.delete(trackId);
+                        } else {
+                            window.dashboard.selectedTracks.add(trackId);
+                        }
+                        
+                        // Update highlighting consistently
+                        window.dashboard.updateTracksDisplay();
+                        if (window.mapManager && window.mapManager.updateTrackHighlighting) {
+                            window.mapManager.updateTrackHighlighting();
+                        } else {
+                            // Fallback to direct highlighting update
+                            this.highlightSelectedTracks(Array.from(window.dashboard.selectedTracks));
+                        }
+                        
+                        console.log(`Track ${trackId} ${window.dashboard.selectedTracks.has(trackId) ? 'selected' : 'deselected'} from 3D map`);
+                    }
+                }
+            }
+        });
+
         // Handle double-click for follow mode (no confirmation popup)
         this.viewer.cesiumWidget.canvas.addEventListener('dblclick', (event) => {
             const pickedEntity = this.viewer.scene.pick(event.position);
@@ -411,7 +442,8 @@ class AdvancedCesiumManager {
             // Store track data for reference
             properties: {
                 trackData: track,
-                unitType: unitType
+                unitType: unitType,
+                originalColor: this.getUnitColor(unitType)
             }
         };
 
@@ -978,6 +1010,120 @@ class AdvancedCesiumManager {
             },
             duration: 1.0
         });
+    }
+
+    // Battle Group Methods
+    isActive() {
+        return this.viewer && !document.getElementById('cesium-map').classList.contains('hidden');
+    }
+
+    highlightSelectedTracks(trackIds) {
+        if (!this.viewer) return;
+
+        // Clear previous highlights
+        this.viewer.entities.values.forEach(entity => {
+            if (entity.properties && entity.properties.isHighlighted) {
+                entity.properties.isHighlighted = false;
+                // Reset to normal color
+                const originalColor = entity.properties.originalColor;
+                if (originalColor && entity.point) {
+                    entity.point.color = originalColor;
+                    entity.point.pixelSize = 8;
+                }
+            }
+        });
+
+        // Highlight selected tracks
+        trackIds.forEach(trackId => {
+            const entity = this.viewer.entities.getById(`unit_${trackId}`);
+            if (entity) {
+                entity.properties = entity.properties || {};
+                entity.properties.isHighlighted = true;
+                if (!entity.properties.originalColor && entity.point) {
+                    entity.properties.originalColor = entity.point.color;
+                }
+                if (entity.point) {
+                    entity.point.color = Cesium.Color.ORANGE;
+                    entity.point.pixelSize = 12;
+                }
+            }
+        });
+    }
+
+    highlightBattleGroup(battleGroup) {
+        if (!this.viewer) return;
+
+        const color = Cesium.Color.fromCssColorString(battleGroup.color);
+        battleGroup.tracks.forEach(trackId => {
+            const entity = this.viewer.entities.getById(`unit_${trackId}`);
+            if (entity) {
+                entity.properties = entity.properties || {};
+                entity.properties.battleGroupId = battleGroup.id;
+                entity.properties.battleGroupColor = color;
+                if (entity.point) {
+                    entity.point.color = color;
+                    entity.point.outlineColor = Cesium.Color.WHITE;
+                    entity.point.outlineWidth = 2;
+                }
+            }
+        });
+    }
+
+    clearBattleGroupHighlight(battleGroupId) {
+        if (!this.viewer) return;
+
+        this.viewer.entities.values.forEach(entity => {
+            if (entity.properties && entity.properties.battleGroupId === battleGroupId) {
+                entity.properties.battleGroupId = null;
+                entity.properties.battleGroupColor = null;
+                // Reset to original color
+                const originalColor = entity.properties.originalColor;
+                if (originalColor && entity.point) {
+                    entity.point.color = originalColor;
+                    entity.point.outlineColor = Cesium.Color.TRANSPARENT;
+                    entity.point.outlineWidth = 0;
+                }
+            }
+        });
+    }
+
+    focusOnBattleGroup(battleGroup) {
+        if (!this.viewer || !battleGroup.tracks.length) return;
+
+        // Calculate center point of battle group
+        let totalLat = 0, totalLon = 0;
+        let validTracks = 0;
+
+        battleGroup.tracks.forEach(trackId => {
+            const entity = this.viewer.entities.getById(`unit_${trackId}`);
+            if (entity && entity.position) {
+                const cartographic = Cesium.Cartographic.fromCartesian(entity.position.getValue(this.viewer.clock.currentTime));
+                totalLat += Cesium.Math.toDegrees(cartographic.latitude);
+                totalLon += Cesium.Math.toDegrees(cartographic.longitude);
+                validTracks++;
+            }
+        });
+
+        if (validTracks > 0) {
+            const centerLat = totalLat / validTracks;
+            const centerLon = totalLon / validTracks;
+            
+            this.viewer.camera.flyTo({
+                destination: Cesium.Cartesian3.fromDegrees(centerLon, centerLat, 50000),
+                duration: 2.0
+            });
+        }
+    }
+
+    followBattleGroup(battleGroup) {
+        if (!this.viewer || !battleGroup.tracks.length) return;
+
+        // For now, focus on the first track in the battle group
+        const firstTrackId = battleGroup.tracks[0];
+        const entity = this.viewer.entities.getById(`unit_${firstTrackId}`);
+        if (entity) {
+            this.startFollowCamera(entity);
+        }
     }
 }
 

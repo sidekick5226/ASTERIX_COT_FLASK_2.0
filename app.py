@@ -2,6 +2,7 @@ import os
 import logging
 from flask import Flask
 from flask_socketio import SocketIO
+from flask_login import LoginManager
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Configure logging
@@ -20,14 +21,35 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 }
 
 # Import models and initialize database
-from models import db
+from models import db, User
 db.init_app(app)
+
+# Initialize Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'  # type: ignore
+login_manager.login_message = 'Please log in to access this page.'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
 socketio = SocketIO(app, cors_allowed_origins="*", logger=False, engineio_logger=False, ping_timeout=180, ping_interval=60, async_mode='threading')
+
+def create_default_user():
+    """Create default user if none exists"""
+    if not User.query.first():
+        default_user = User(username='user')
+        default_user.set_password('pass')
+        db.session.add(default_user)
+        db.session.commit()
+        print("Default user created: username='user', password='pass'")
 
 with app.app_context():
     # Import models to ensure tables are created
     import models
     db.create_all()
+    create_default_user()
 
 # Import routes
 import routes

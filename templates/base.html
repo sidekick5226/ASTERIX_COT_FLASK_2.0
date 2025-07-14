@@ -50,6 +50,19 @@
             background-color: rgba(249, 115, 22, 0.2) !important;
         }
         
+        /* Map multi-select mode styling */
+        .multi-select-mode #map-container {
+            cursor: crosshair !important;
+        }
+        
+        .multi-select-mode .custom-track-marker {
+            cursor: crosshair !important;
+        }
+        
+        .multi-select-mode .custom-track-marker:hover {
+            filter: brightness(1.2) drop-shadow(0 0 4px orange) !important;
+        }
+        
         /* Battle group dialog animations */
         #battle-group-dialog {
             backdrop-filter: blur(4px);
@@ -118,6 +131,20 @@
                 <h3 class="text-lg font-bold text-white">
                     <i class="fas fa-satellite-dish mr-2"></i> COP Dashboard
                 </h3>
+                <div class="flex items-center justify-between mt-2">
+                    <div class="text-sm text-slate-300">
+                        {% if current_user.is_authenticated %}
+                            Welcome, {{ current_user.username }}
+                        {% endif %}
+                    </div>
+                    <div class="flex space-x-2">
+                        {% if current_user.is_authenticated %}
+                            <a href="{{ url_for('logout') }}" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-xs font-medium transition-colors">
+                                <i class="fas fa-sign-out-alt mr-1"></i> Logout
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
             
             <!-- Navigation Tabs -->

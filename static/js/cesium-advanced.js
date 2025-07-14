@@ -112,16 +112,179 @@ class AdvancedCesiumManager {
             if (this.cameraFollowTarget) {
                 this.updateCameraFollow();
             }
+            // Update compass on each frame
+            this.updateCompass();
         });
 
         // Add camera control UI
         this.addCameraControlsUI();
+        
+        // Add compass UI
+        this.addCompassUI();
     }
 
     addCameraControlsUI() {
         // Camera controls are now handled directly through double-click to follow
         // and deselection to stop following - no UI buttons needed
         console.log('Camera controls: Double-click to follow, deselect to stop');
+    }
+
+    addCompassUI() {
+        // Create compass container
+        const compassContainer = document.createElement('div');
+        compassContainer.id = 'cesium-compass';
+        compassContainer.style.cssText = `
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 80px;
+            height: 80px;
+            background: rgba(30, 41, 59, 0.95);
+            border: 2px solid #3b4168;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        `;
+
+        // Add hover effect
+        compassContainer.addEventListener('mouseenter', () => {
+            compassContainer.style.transform = 'scale(1.1)';
+            compassContainer.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.6)';
+        });
+
+        compassContainer.addEventListener('mouseleave', () => {
+            compassContainer.style.transform = 'scale(1)';
+            compassContainer.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.4)';
+        });
+
+        // Create compass needle
+        const compassNeedle = document.createElement('div');
+        compassNeedle.id = 'compass-needle';
+        compassNeedle.style.cssText = `
+            width: 3px;
+            height: 32px;
+            background: linear-gradient(to bottom, #ef4444 0%, #ef4444 50%, #ffffff 50%, #ffffff 100%);
+            transform-origin: bottom center;
+            position: relative;
+            border-radius: 1px;
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+        `;
+
+        // Create compass center dot
+        const compassCenter = document.createElement('div');
+        compassCenter.style.cssText = `
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #ffffff;
+            border-radius: 50%;
+            border: 2px solid #3b4168;
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+        `;
+
+        // Create North indicator
+        const northIndicator = document.createElement('div');
+        northIndicator.innerHTML = 'N';
+        northIndicator.style.cssText = `
+            position: absolute;
+            top: 5px;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: bold;
+            font-family: Arial, sans-serif;
+            text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+        `;
+
+        // Create degree display
+        const degreeDisplay = document.createElement('div');
+        degreeDisplay.id = 'compass-degrees';
+        degreeDisplay.innerHTML = '0°';
+        degreeDisplay.style.cssText = `
+            position: absolute;
+            bottom: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: bold;
+            font-family: Arial, sans-serif;
+            background: rgba(30, 41, 59, 0.9);
+            padding: 3px 8px;
+            border-radius: 4px;
+            border: 1px solid #3b4168;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(5px);
+        `;
+
+        // Add compass tick marks
+        for (let i = 0; i < 8; i++) {
+            const tick = document.createElement('div');
+            const angle = i * 45;
+            const isCardinal = i % 2 === 0;
+            
+            tick.style.cssText = `
+                position: absolute;
+                width: ${isCardinal ? '2px' : '1px'};
+                height: ${isCardinal ? '8px' : '6px'};
+                background: #ffffff;
+                transform: rotate(${angle}deg) translateY(-${isCardinal ? '36px' : '37px'});
+                transform-origin: bottom center;
+                opacity: ${isCardinal ? '0.9' : '0.6'};
+            `;
+            
+            compassContainer.appendChild(tick);
+        }
+
+        // Assemble compass
+        compassContainer.appendChild(compassNeedle);
+        compassContainer.appendChild(compassCenter);
+        compassContainer.appendChild(northIndicator);
+        compassContainer.appendChild(degreeDisplay);
+
+        // Add compass to the cesium container
+        const cesiumContainer = document.getElementById('cesium-map');
+        if (cesiumContainer) {
+            cesiumContainer.appendChild(compassContainer);
+        }
+
+        // Add click handler to reset north
+        compassContainer.addEventListener('click', () => {
+            this.resetCameraToNorth();
+        });
+    }
+
+    updateCompass() {
+        if (!this.viewer || !this.viewer.camera) return;
+
+        const needle = document.getElementById('compass-needle');
+        const degreeDisplay = document.getElementById('compass-degrees');
+        
+        if (!needle || !degreeDisplay) return;
+
+        // Get camera heading in radians
+        const heading = this.viewer.camera.heading;
+        
+        // Convert to degrees (0-360)
+        let degrees = Cesium.Math.toDegrees(heading);
+        if (degrees < 0) degrees += 360;
+        
+        // Round to nearest degree
+        degrees = Math.round(degrees);
+        
+        // Calculate needle rotation (opposite of camera heading to show North)
+        const needleRotation = -degrees;
+        
+        // Update needle rotation
+        needle.style.transform = `rotate(${needleRotation}deg)`;
+        
+        // Update degree display
+        degreeDisplay.innerHTML = `${degrees}°`;
     }
 
     setupCoTWebSocket() {
@@ -756,7 +919,13 @@ class AdvancedCesiumManager {
             // Force a render when showing and reset to optimal view
             if (this.viewer) {
                 this.viewer.resize();
-                this.resetToOptimalView();                this.viewer.scene.requestRender();
+                this.resetToOptimalView();
+                this.viewer.scene.requestRender();
+            }
+            
+            // Ensure compass is added when showing 3D view
+            if (!document.getElementById('cesium-compass')) {
+                this.addCompassUI();
             }
         }
     }
@@ -765,6 +934,12 @@ class AdvancedCesiumManager {
         const cesiumContainer = document.getElementById('cesium-map');
         if (cesiumContainer) {
             cesiumContainer.classList.add('hidden');
+        }
+        
+        // Remove compass when hiding 3D view
+        const compass = document.getElementById('cesium-compass');
+        if (compass) {
+            compass.remove();
         }
     }
 
@@ -778,6 +953,30 @@ class AdvancedCesiumManager {
                 roll: 0.0
             },
             duration: 2.0
+        });
+    }
+
+    resetCameraToNorth() {
+        if (!this.viewer) return;
+
+        // Get current camera position
+        const currentPosition = this.viewer.camera.position;
+        const currentHeight = this.viewer.camera.positionCartographic.height;
+        const currentCartographic = this.viewer.camera.positionCartographic;
+
+        // Smoothly rotate camera to face north while maintaining position
+        this.viewer.camera.flyTo({
+            destination: Cesium.Cartesian3.fromRadians(
+                currentCartographic.longitude,
+                currentCartographic.latitude,
+                currentHeight
+            ),
+            orientation: {
+                heading: 0.0, // North
+                pitch: this.viewer.camera.pitch, // Keep current pitch
+                roll: 0.0 // Level roll
+            },
+            duration: 1.0
         });
     }
 }

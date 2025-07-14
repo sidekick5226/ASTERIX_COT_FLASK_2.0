@@ -165,11 +165,39 @@ def generate_tracks():
 
 @app.route('/api/events')
 def get_events():
-    """Get all events for Event Log"""
+    """Get all events for Event Log with optional filtering"""
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 50, type=int)
     
-    events = Event.query.order_by(Event.timestamp.desc()).paginate(
+    # Get filter parameters
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    event_type = request.args.get('event_type')
+    
+    # Build query with filters
+    query = Event.query
+    
+    # Apply date filters
+    if start_date:
+        try:
+            start_datetime = datetime.fromisoformat(start_date.replace('T', ' '))
+            query = query.filter(Event.timestamp >= start_datetime)
+        except ValueError:
+            pass  # Invalid date format, ignore filter
+    
+    if end_date:
+        try:
+            end_datetime = datetime.fromisoformat(end_date.replace('T', ' '))
+            query = query.filter(Event.timestamp <= end_datetime)
+        except ValueError:
+            pass  # Invalid date format, ignore filter
+    
+    # Apply event type filter
+    if event_type:
+        query = query.filter(Event.event_type == event_type)
+    
+    # Execute query with pagination
+    events = query.order_by(Event.timestamp.desc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
     
@@ -177,7 +205,12 @@ def get_events():
         'events': [event.to_dict() for event in events.items],
         'total': events.total,
         'pages': events.pages,
-        'current_page': page
+        'current_page': page,
+        'filters': {
+            'start_date': start_date,
+            'end_date': end_date,
+            'event_type': event_type
+        }
     })
 
 @app.route('/api/monitor-events')

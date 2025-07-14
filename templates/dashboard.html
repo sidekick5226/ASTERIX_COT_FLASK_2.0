@@ -18,9 +18,6 @@
             <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" id="battle-mode-btn">
                 <i class="fas fa-globe-americas mr-1"></i> Battle View
             </button>
-            <button class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" id="test-dialog-btn">
-                <i class="fas fa-bug mr-1"></i> Test Dialog
-            </button>
         </div>
     </div>
 
@@ -41,6 +38,7 @@
                     <span class="bg-blue-600 text-white px-2 py-0.5 rounded text-xs font-medium ml-2" id="total-tracks">0</span>
                 </h6>
             </div>
+            
             <div class="flex-1 overflow-y-auto">
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">
@@ -79,6 +77,7 @@
     <div class="flex items-center justify-between p-4 bg-navy border-b border-slate-600">
         <h2 class="text-xl font-bold text-white">
             <i class="fas fa-eye mr-2"></i> Event Monitor
+            <span class="bg-green-600 text-white px-2 py-0.5 rounded text-xs font-medium ml-2" id="monitor-event-count">0</span>
         </h2>
         <div class="flex items-center space-x-2">
             <span class="text-green-400 text-sm">
@@ -88,6 +87,46 @@
             <button class="bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" id="refresh-events-btn">
                 <i class="fas fa-sync mr-1"></i> Manual Refresh
             </button>
+        </div>
+    </div>
+
+    <!-- Monitor Filters -->
+    <div class="p-4 bg-slate-700 border-b border-slate-600">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-xs text-slate-400 mb-1">Track ID</label>
+                <input type="text" class="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-white placeholder-slate-400" id="monitor-track-filter" placeholder="Filter by Track ID...">
+            </div>
+            <div>
+                <label class="block text-xs text-slate-400 mb-1">Event Type</label>
+                <select class="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-white" id="monitor-event-type-filter">
+                    <option value="">All Types</option>
+                    <option value="Position Update">Position Update</option>
+                    <option value="Status Change">Status Change</option>
+                    <option value="Alert">Alert</option>
+                    <option value="Track Created">Track Created</option>
+                    <option value="Track Updated">Track Updated</option>
+                    <option value="Track Deleted">Track Deleted</option>
+                    <option value="System Event">System Event</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-slate-400 mb-1">Track Type</label>
+                <select class="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-white" id="monitor-track-type-filter">
+                    <option value="">All Types</option>
+                    <option value="Aircraft">Aircraft</option>
+                    <option value="Vessel">Vessel</option>
+                    <option value="Vehicle">Vehicle</option>
+                </select>
+            </div>
+            <div class="flex items-end space-x-2">
+                <button class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" id="apply-monitor-filters-btn">
+                    <i class="fas fa-filter mr-1"></i> Apply
+                </button>
+                <button class="flex-1 bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" id="clear-monitor-filters-btn">
+                    <i class="fas fa-times mr-1"></i> Clear
+                </button>
+            </div>
         </div>
     </div>
 
@@ -146,11 +185,18 @@
                     <option value="Position Update">Position Update</option>
                     <option value="Status Change">Status Change</option>
                     <option value="Alert">Alert</option>
+                    <option value="Track Created">Track Created</option>
+                    <option value="Track Updated">Track Updated</option>
+                    <option value="Track Deleted">Track Deleted</option>
+                    <option value="System Event">System Event</option>
                 </select>
             </div>
-            <div class="flex items-end">
-                <button class="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" id="filter-log-btn">
+            <div class="flex items-end space-x-2">
+                <button class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" id="filter-log-btn">
                     <i class="fas fa-search mr-1"></i> Filter
+                </button>
+                <button class="flex-1 bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" id="clear-filters-btn">
+                    <i class="fas fa-times mr-1"></i> Clear
                 </button>
             </div>
         </div>

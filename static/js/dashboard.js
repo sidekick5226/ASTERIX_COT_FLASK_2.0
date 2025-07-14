@@ -72,9 +72,6 @@ class SurveillanceDashboard {
         document.getElementById('stop-demo-btn').addEventListener('click', () => this.stopLiveDemo());
         document.getElementById('battle-mode-btn').addEventListener('click', () => this.toggleBattleMode());
 
-        // Add test dialog button for debugging
-        document.getElementById('test-dialog-btn').addEventListener('click', () => this.testBattleGroupDialog());
-
         // Add advanced 3D mode with double-click
         document.getElementById('battle-mode-btn').addEventListener('dblclick', () => this.toggleAdvanced3DMode());
 
@@ -85,7 +82,22 @@ class SurveillanceDashboard {
         // Event handlers
         document.getElementById('refresh-events-btn').addEventListener('click', () => this.refreshEvents());
         document.getElementById('filter-log-btn').addEventListener('click', () => this.filterEventLog());
+        document.getElementById('clear-filters-btn').addEventListener('click', () => this.clearEventLogFilters());
         document.getElementById('export-log-btn').addEventListener('click', () => this.exportEventLog());
+
+        // Event Monitor filter handlers
+        document.getElementById('apply-monitor-filters-btn').addEventListener('click', () => this.applyMonitorFilters());
+        document.getElementById('clear-monitor-filters-btn').addEventListener('click', () => this.clearMonitorFilters());
+        
+        // Add debounced input for track filter
+        let trackFilterTimeout;
+        document.getElementById('monitor-track-filter').addEventListener('input', () => {
+            clearTimeout(trackFilterTimeout);
+            trackFilterTimeout = setTimeout(() => this.applyMonitorFilters(), 300);
+        });
+        
+        document.getElementById('monitor-event-type-filter').addEventListener('change', () => this.applyMonitorFilters());
+        document.getElementById('monitor-track-type-filter').addEventListener('change', () => this.applyMonitorFilters());
 
         // Network configuration
         this.bindNetworkConfigEvents();
@@ -146,16 +158,17 @@ class SurveillanceDashboard {
             tracks.forEach(track => {
                 this.tracks.set(track.track_id, track);
             });
-
+            
             this.updateTracksDisplay();
 
-            if (window.mapManager) {
-                window.mapManager.updateTracks(tracks);
-            }
+            // Update the map with current filters
+            this.updateMapWithCurrentFilters();
+            
         } catch (error) {
             // Silently handle errors to avoid console spam
             if (error.name !== 'AbortError') {
-                console.warn('Tracks temporarily unavailable');            }
+                console.warn('Tracks temporarily unavailable');
+            }
         }
     }
 
@@ -244,6 +257,9 @@ class SurveillanceDashboard {
 
         document.getElementById('total-tracks').textContent = this.tracks.size;
         console.log(`Updated tracks display with ${this.tracks.size} tracks`);
+        
+        // Always reapply Active Tracks table filters to maintain table state
+        this.applyFilters();
     }
 
     createTrackRow(track) {
@@ -301,28 +317,55 @@ class SurveillanceDashboard {
     }
 
     filterTracks(type) {
-        // Implementation for track filtering
-        if (window.mapManager) {
-            window.mapManager.filterByType(type);
+        console.log('filterTracks called with type:', type);
+        
+        // Check if Event Monitor filters are active - if so, don't interfere with map filtering
+        const trackFilter = document.getElementById('monitor-track-filter')?.value?.toLowerCase() || '';
+        const eventTypeFilter = document.getElementById('monitor-event-type-filter')?.value || '';
+        const trackTypeFilter = document.getElementById('monitor-track-type-filter')?.value || '';
+        
+        console.log('Event Monitor filters check:', { trackFilter, eventTypeFilter, trackTypeFilter });
+        
+        // Only apply Active Tracks filter to map if Event Monitor filters are not active
+        if (!trackFilter && !eventTypeFilter && !trackTypeFilter) {
+            console.log('No Event Monitor filters active - applying Active Tracks filter to map');
+            if (window.mapManager) {
+                window.mapManager.filterByType(type);
+            }
+        } else {
+            console.log('Event Monitor filters are active - skipping Active Tracks map filter');
         }
 
-        // Update table display
-        const rows = document.querySelectorAll('#tracks-table-body tr');
-        rows.forEach(row => {
-            const trackType = row.cells[1].textContent.trim();
-            if (!type || trackType === type) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
+        // Always apply the filter to the tracks table
+        this.applyFilters();
     }
 
     searchTracks(query) {
+        this.applyFilters();
+    }
+
+    applyFilters() {
+        const typeFilter = document.getElementById('track-type-filter')?.value || '';
+        const searchQuery = document.getElementById('search-input')?.value || '';
+
+        // If no filters are active, show all rows
+        if (!typeFilter && !searchQuery) {
+            const rows = document.querySelectorAll('#tracks-table-body tr');
+            rows.forEach(row => {
+                row.style.display = '';
+            });
+            return;
+        }
+
         const rows = document.querySelectorAll('#tracks-table-body tr');
         rows.forEach(row => {
-            const trackId = row.cells[0].textContent.trim();
-            if (!query || trackId.toLowerCase().includes(query.toLowerCase())) {
+            const trackType = row.cells[1].textContent.trim();
+            const trackId = row.dataset.trackId || row.cells[0].textContent.trim().replace(/.*?([A-Z]+\d+).*/, '$1');
+            
+            const matchesType = !typeFilter || trackType === typeFilter;
+            const matchesSearch = !searchQuery || trackId.toLowerCase().includes(searchQuery.toLowerCase());
+            
+            if (matchesType && matchesSearch) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';
@@ -384,9 +427,55 @@ class SurveillanceDashboard {
             return;
         }
 
+        // Get filter values
+        const trackFilter = document.getElementById('monitor-track-filter')?.value?.toLowerCase() || '';
+        const eventTypeFilter = document.getElementById('monitor-event-type-filter')?.value || '';
+        const trackTypeFilter = document.getElementById('monitor-track-type-filter')?.value || '';
+
+        // Filter events based on filter criteria
+        let filteredEvents = this.monitorEvents;
+
+        if (trackFilter) {
+            filteredEvents = filteredEvents.filter(event => 
+                event.track_id?.toLowerCase().includes(trackFilter)
+            );
+        }
+
+        if (eventTypeFilter) {
+            filteredEvents = filteredEvents.filter(event => 
+                event.event_type === eventTypeFilter
+            );
+        }
+
+        if (trackTypeFilter) {
+            filteredEvents = filteredEvents.filter(event => 
+                event.track_type === trackTypeFilter
+            );
+        }
+
         // Show real-time monitor events (most recent first)
-        const eventsToShow = this.monitorEvents.slice(-50).reverse();
-        console.log('Displaying', eventsToShow.length, 'events');
+        const eventsToShow = filteredEvents.slice(-50).reverse();
+        console.log('Displaying', eventsToShow.length, 'filtered events out of', this.monitorEvents.length, 'total events');
+
+        // Update event count display
+        const eventCountSpan = document.getElementById('monitor-event-count');
+        if (eventCountSpan) {
+            eventCountSpan.textContent = eventsToShow.length;
+        }
+
+        if (eventsToShow.length === 0) {
+            // Show no results message when filters exclude all events
+            const noResultsRow = document.createElement('tr');
+            noResultsRow.innerHTML = `
+                <td colspan="8" class="px-4 py-8 text-center text-slate-400">
+                    <i class="fas fa-filter text-2xl mb-2"></i><br>
+                    No events match the current filters<br>
+                    <small>Try adjusting your filter criteria</small>
+                </td>
+            `;
+            tbody.appendChild(noResultsRow);
+            return;
+        }
 
         eventsToShow.forEach(event => {
             const row = document.createElement('tr');
@@ -542,14 +631,68 @@ class SurveillanceDashboard {
         this.loadEventLog();
     }
 
-    filterEventLog() {
+    async filterEventLog() {
         const startDate = document.getElementById('start-date').value;
         const endDate = document.getElementById('end-date').value;
         const eventType = document.getElementById('event-type-filter').value;
 
-        // Implementation for filtering event log
         console.log('Filtering events:', { startDate, endDate, eventType });
-        this.showNotification('Event log filtered', 'info');
+        
+        try {
+            // Show loading state
+            const filterBtn = document.getElementById('filter-log-btn');
+            const originalHTML = filterBtn.innerHTML;
+            filterBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Filtering...';
+            filterBtn.disabled = true;
+            
+            // Build query parameters
+            const params = new URLSearchParams();
+            params.append('page', this.currentPage);
+            params.append('per_page', '20');
+            
+            if (startDate) params.append('start_date', startDate);
+            if (endDate) params.append('end_date', endDate);
+            if (eventType) params.append('event_type', eventType);
+            
+            // Make API call with filters
+            const response = await fetch(`/api/events?${params.toString()}`);
+            const data = await response.json();
+            
+            // Update display with filtered results
+            this.updateEventLogDisplay(data.events);
+            this.updatePagination(data.current_page, data.pages);
+            
+            // Show success message
+            const filterCount = data.events.length;
+            const totalPages = data.pages;
+            this.showNotification(`Event log filtered - ${filterCount} events found (${totalPages} pages)`, 'success');
+            
+            // Restore button
+            filterBtn.innerHTML = originalHTML;
+            filterBtn.disabled = false;
+            
+        } catch (error) {
+            console.error('Error filtering event log:', error);
+            this.showNotification('Error filtering event log', 'error');
+            
+            // Restore button on error
+            const filterBtn = document.getElementById('filter-log-btn');
+            filterBtn.innerHTML = '<i class="fas fa-search mr-1"></i> Filter';
+            filterBtn.disabled = false;
+        }
+    }
+
+    clearEventLogFilters() {
+        // Clear all filter inputs
+        document.getElementById('start-date').value = '';
+        document.getElementById('end-date').value = '';
+        document.getElementById('event-type-filter').value = '';
+        
+        // Reset to page 1 and reload without filters
+        this.currentPage = 1;
+        this.loadEventLog();
+        
+        this.showNotification('Event log filters cleared', 'info');
     }
 
     exportEventLog() {
@@ -745,14 +888,51 @@ class SurveillanceDashboard {
     }
 
     onTrackUpdate(tracks) {
+        console.log('onTrackUpdate called with', tracks.length, 'tracks');
         tracks.forEach(track => {
             this.tracks.set(track.track_id, track);
         });
 
         this.updateTracksDisplay();
 
-        if (window.mapManager) {
-            window.mapManager.updateTracks(tracks);
+        // Always update the map with the proper filtered tracks
+        this.updateMapWithCurrentFilters();
+    }
+
+    updateMapWithCurrentFilters() {
+        if (!window.mapManager) {
+            console.log('MapManager not available');
+            return;
+        }
+
+        // Always ensure the map has the full track list first
+        const allTracks = Array.from(this.tracks.values());
+        window.mapManager.setFullTrackList(allTracks);
+
+        // Check if Event Monitor filters are active
+        const trackFilter = document.getElementById('monitor-track-filter')?.value?.toLowerCase() || '';
+        const trackTypeFilter = document.getElementById('monitor-track-type-filter')?.value || '';
+        
+        console.log('Event Monitor filters:', { trackFilter, trackTypeFilter });
+        
+        if (trackFilter || trackTypeFilter) {
+            // Event Monitor filters are active - apply them to the map
+            console.log('Applying Event Monitor filters to map');
+            this.applyFiltersToMap(trackFilter, trackTypeFilter);
+        } else {
+            // No Event Monitor filters - check if Active Tracks tab filter should be applied
+            const activeTracksFilter = document.getElementById('track-type-filter')?.value || '';
+            console.log('Active Tracks filter:', activeTracksFilter);
+            
+            if (activeTracksFilter) {
+                // Apply Active Tracks filter to map
+                console.log('Applying Active Tracks filter to map');
+                window.mapManager.filterByType(activeTracksFilter);
+            } else {
+                // No filters active - show all tracks
+                console.log('No filters active - showing all tracks on map');
+                window.mapManager.updateTracks(allTracks);
+            }
         }
     }
 
@@ -1227,24 +1407,55 @@ class SurveillanceDashboard {
         }
     }
 
-    testBattleGroupDialog() {
-        console.log('Testing battle group dialog...');
+    applyMonitorFilters() {
+        console.log('Applying monitor filters...');
         
-        // Simulate having selected tracks
-        this.selectedTracks.clear();
-        this.selectedTracks.add('TRK1000');
-        this.selectedTracks.add('TRK1001');
+        // Update the Event Monitor display
+        this.updateEventsDisplay();
         
-        console.log('Added test tracks to selection:', Array.from(this.selectedTracks));
+        // Update the map with the current filters
+        this.updateMapWithCurrentFilters();
+    }
+
+    applyFiltersToMap(trackFilter, trackTypeFilter) {
+        console.log('applyFiltersToMap called with:', { trackFilter, trackTypeFilter });
         
-        // Try to show the dialog
-        this.showBattleGroupDialog();
+        // Always start with the full track list from the dashboard
+        let filteredTracks = Array.from(this.tracks.values());
+        console.log('Total tracks before filtering:', filteredTracks.length);
         
-        // Test auto-close after 5 seconds for debugging
-        setTimeout(() => {
-            console.log('Auto-closing dialog after 5 seconds for testing...');
-            this.hideBattleGroupDialog();
-        }, 5000);
+        // Apply track ID filter
+        if (trackFilter) {
+            filteredTracks = filteredTracks.filter(track => 
+                track.track_id?.toLowerCase().includes(trackFilter)
+            );
+            console.log('After track ID filter:', filteredTracks.length);
+        }
+        
+        // Apply track type filter
+        if (trackTypeFilter) {
+            filteredTracks = filteredTracks.filter(track => 
+                track.track_type === trackTypeFilter || track.type === trackTypeFilter
+            );
+            console.log('After track type filter:', filteredTracks.length);
+        }
+        
+        // Update map with filtered tracks
+        if (window.mapManager) {
+            window.mapManager.updateTracks(filteredTracks);
+            console.log(`Map updated with ${filteredTracks.length} filtered tracks`);
+        }
+    }
+
+    clearMonitorFilters() {
+        console.log('Clearing monitor filters...');
+        // Clear all filter inputs
+        document.getElementById('monitor-track-filter').value = '';
+        document.getElementById('monitor-event-type-filter').value = '';
+        document.getElementById('monitor-track-type-filter').value = '';
+        
+        // Apply filters (which will now show all events and tracks)
+        this.applyMonitorFilters();
     }
 }
 

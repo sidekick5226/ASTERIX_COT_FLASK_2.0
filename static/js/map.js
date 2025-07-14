@@ -7,6 +7,7 @@ class MapManager {
         this.trackTrails = new Map(); // Store track trails for movement visualization
         this.is3DMode = false;
         this.tracks = [];
+        this.fullTrackList = []; // Keep a copy of the full track list for filtering
         this.showTrails = true; // ATAK-CIV style movement trails
 
         this.init();
@@ -499,7 +500,9 @@ class MapManager {
     }
 
     filterByType(type) {
-        const filteredTracks = type ? this.tracks.filter(track => track.type === type) : this.tracks;
+        // Use the full track list for filtering, not the currently displayed tracks
+        const tracksToFilter = this.fullTrackList.length > 0 ? this.fullTrackList : this.tracks;
+        const filteredTracks = type ? tracksToFilter.filter(track => track.type === type) : tracksToFilter;
         this.updateTracks(filteredTracks);
     }
 
@@ -536,6 +539,10 @@ class MapManager {
         if (this.cesiumViewer && this.is3DMode) {
             this.cesiumViewer.resize();
         }
+    }
+
+    setFullTrackList(tracks) {
+        this.fullTrackList = tracks;
     }
 }
 

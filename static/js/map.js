@@ -28,7 +28,7 @@ class MapManager {
         // Check if map is already initialized
         const mapContainer = document.getElementById('leaflet-map');
         if (mapContainer._leaflet_id) {
-            console.log('Leaflet map already initialized, reusing existing instance');
+            // Debug log removed
             return;
         }
 
@@ -107,7 +107,7 @@ class MapManager {
 
         } catch (error) {
             console.error('Error initializing Cesium:', error);
-            console.log('Trying fallback Cesium configuration...');
+            // Debug log removed
 
             // Fallback: Use satellite imagery with basic configuration
             try {
@@ -135,12 +135,12 @@ class MapManager {
                     destination: Cesium.Cartesian3.fromDegrees(-95.0, 39.0, 2000000)
                 });
 
-                console.log('Cesium initialized with fallback configuration');
+                // Debug log removed
 
                 // Test if viewer is actually working
                 setTimeout(() => {
                     if (this.cesiumViewer && this.cesiumViewer.scene) {
-                        console.log('Cesium scene verified - 3D mode ready');
+                        // Debug log removed
                     } else {
                         console.error('Cesium scene not available');
                     }
@@ -148,36 +148,33 @@ class MapManager {
 
             } catch (fallbackError) {
                 console.error('Cesium fallback also failed:', fallbackError);
-                console.log('3D Battle View unavailable - WebGL support required');
+                // Debug log removed
                 this.cesiumViewer = null;
             }
         }
     }
 
     addMapInfoControl() {
-        const mapInfo = L.control({ position: 'topleft' });
+        const coordsInfo = L.control({ position: 'topright' });
 
-        mapInfo.onAdd = function(map) {
-            const div = L.DomUtil.create('div', 'map-info-control');
+        coordsInfo.onAdd = function(map) {
+            const div = L.DomUtil.create('div', 'coords-display');
             div.style.cssText = `
-                background: rgba(30, 41, 59, 0.95);
+                background: rgba(30, 41, 59, 0.9);
                 border: 1px solid #3b4168;
-                border-radius: 6px;
-                padding: 10px;
+                border-radius: 4px;
+                padding: 6px 10px;
                 color: #ffffff;
-                font-size: 0.85rem;
-                min-width: 200px;
-                backdrop-filter: blur(10px);
+                font-size: 0.8rem;
+                font-family: monospace;
+                backdrop-filter: blur(5px);
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             `;
-            div.innerHTML = `
-                <div><strong>Map Mode:</strong> <span id="map-mode-display">2D Standard</span></div>
-                <div><strong>Coordinates:</strong> <span id="mouse-coords">---, ---</span></div>
-                <div><strong>Zoom:</strong> <span id="zoom-level">${map.getZoom()}</span></div>
-            `;
+            div.innerHTML = `<span id="mouse-coords">---.----, ---.----</span>`;
             return div;
         };
 
-        mapInfo.addTo(this.leafletMap);
+        coordsInfo.addTo(this.leafletMap);
 
         // Update coordinates on mouse move
         this.leafletMap.on('mousemove', (e) => {
@@ -186,18 +183,10 @@ class MapManager {
                 coords.textContent = `${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`;
             }
         });
-
-        // Update zoom level
-        this.leafletMap.on('zoomend', () => {
-            const zoomDisplay = document.getElementById('zoom-level');
-            if (zoomDisplay) {
-                zoomDisplay.textContent = this.leafletMap.getZoom();
-            }
-        });
     }
 
     updateTracks(tracks) {
-        console.log(`Updating ${tracks.length} tracks in ${this.is3DMode ? '3D Battle' : '2D Standard'} view`);
+        // Debug log removed
         this.tracks = tracks;
 
         // Update 2D map when in 2D mode or always keep it synchronized
@@ -250,35 +239,88 @@ class MapManager {
     }
 
     createLeafletMarker(track) {
-        const icon = this.getTrackIcon(track.type);
-        const color = this.getTrackColor(track.type);
+        // Use MIL-STD-2525 symbols if available, otherwise fall back to Font Awesome
+        if (window.milStd2525) {
+            const markerHtml = window.milStd2525.createLeafletMarker(track);
+            
+            const customIcon = L.divIcon({
+                html: markerHtml,
+                iconSize: [40, 50],
+                iconAnchor: [20, 25],
+                className: 'mil-std-marker-container'
+            });
 
-        // Create custom HTML marker
-        const customIcon = L.divIcon({
-            html: `<div style="color: ${color}; font-size: 16px; text-align: center;">
-                     <i class="${icon}"></i>
-                     <div style="font-size: 10px; font-weight: bold; margin-top: 2px;">${track.track_id}</div>
-                   </div>`,
-            iconSize: [40, 40],
-            iconAnchor: [20, 20],
-            className: 'custom-track-marker'
-        });
+            const marker = L.marker([track.latitude, track.longitude], { 
+                icon: customIcon,
+                title: `${track.track_id} - ${track.track_type || track.type}`
+            });
 
-        const marker = L.marker([track.latitude, track.longitude], { 
-            icon: customIcon,
-            title: `${track.track_id} - ${track.type}`
-        });
+            // Add popup with track details
+            const popupContent = this.createPopupContent(track);
+            marker.bindPopup(popupContent, {
+                autoClose: true,
+                closeOnClick: false
+            });
+            
+            // Add click event for track selection
+            marker.on('click', (e) => {
+                // Check if shift is pressed - handle differently
+                if (e.originalEvent.shiftKey) {
+                    // Prevent popup from opening
+                    e.target.closePopup();
+                    // Don't stop propagation - just prevent default popup behavior
+                    this.onTrackClick(track.track_id, e.originalEvent);
+                } else {
+                    // Normal click - allow popup to open
+                    this.onTrackClick(track.track_id, e.originalEvent);
+                }
+            });
+            
+            return marker;
+        } else {
+            // Fallback to original Font Awesome icons
+            const icon = this.getTrackIcon(track.type);
+            const color = this.getTrackColor(track.type);
 
-        // Add popup with track details
-        const popupContent = this.createPopupContent(track);
-        marker.bindPopup(popupContent);
-        
-        // Add click event for track selection
-        marker.on('click', (e) => {
-            this.onTrackClick(track.track_id, e.originalEvent);
-        });
-        
-        return marker;
+            // Create custom HTML marker
+            const customIcon = L.divIcon({
+                html: `<div style="color: ${color}; font-size: 16px; text-align: center;">
+                         <i class="${icon}"></i>
+                         <div style="font-size: 10px; font-weight: bold; margin-top: 2px;">${track.track_id}</div>
+                       </div>`,
+                iconSize: [40, 40],
+                iconAnchor: [20, 20],
+                className: 'custom-track-marker'
+            });
+
+            const marker = L.marker([track.latitude, track.longitude], { 
+                icon: customIcon,
+                title: `${track.track_id} - ${track.type}`
+            });
+
+            // Add popup with track details
+            const popupContent = this.createPopupContent(track);
+            marker.bindPopup(popupContent, {
+                autoClose: true,
+                closeOnClick: false
+            });
+            
+            // Add click event for track selection
+            marker.on('click', (e) => {
+                // Check if shift is pressed - handle differently
+                if (e.originalEvent.shiftKey) {
+                    // Prevent popup from opening
+                    e.target.closePopup();
+                    // Don't stop propagation - just prevent default popup behavior
+                    this.onTrackClick(track.track_id, e.originalEvent);
+                } else {
+                    // Normal click - allow popup to open
+                    this.onTrackClick(track.track_id, e.originalEvent);
+                }
+            });
+            
+            return marker;
+        }
     }
 
     createPopupContent(track) {
@@ -321,7 +363,11 @@ class MapManager {
     }
 
     createCesiumEntity(track) {
-        const color = this.getCesiumColor(track.type);
+        // Use MIL-STD-2525 colors if available
+        const color = window.milStd2525 ? 
+            window.milStd2525.getCesiumColor(track.track_type || track.type) : 
+            this.getCesiumColor(track.type);
+            
         // Use reasonable altitude defaults for 3D view
         let altitude = 0;
         if (track.altitude && track.altitude > 0 && track.altitude < 100000) {
@@ -343,7 +389,8 @@ class MapManager {
             altitude
         );
 
-        this.cesiumViewer.entities.add({
+        // Create entity with MIL-STD-2525 symbol if available
+        const entityConfig = {
             position: position,
             point: {
                 pixelSize: 10,
@@ -374,7 +421,20 @@ class MapManager {
                     <p><strong>Last Update:</strong> ${new Date(track.last_updated).toLocaleString()}</p>
                 </div>
             `
-        });
+        };
+
+        // Add billboard with MIL-STD-2525 symbol if available
+        if (window.milStd2525) {
+            const billboard = window.milStd2525.createCesiumBillboard(track);
+            entityConfig.billboard = {
+                image: billboard,
+                scale: 1.0,
+                pixelOffset: new Cesium.Cartesian2(0, -15),
+                distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0.0, 500000.0)
+            };
+        }
+
+        this.cesiumViewer.entities.add(entityConfig);
     }
 
     getTrackIcon(type) {
@@ -407,7 +467,7 @@ class MapManager {
     }
 
     switchTo3D() {
-        console.log('Switching to 3D Battle View...');
+        // Debug log removed
         this.is3DMode = true;
 
         // Clear any existing track selections
@@ -433,7 +493,7 @@ class MapManager {
             try {
                 this.cesiumViewer.destroy();
                 this.cesiumViewer = null;
-                console.log('Destroyed basic Cesium viewer to prevent conflicts');
+                // Debug log removed
             } catch (error) {
                 console.warn('Error destroying basic Cesium viewer:', error);
             }
@@ -441,7 +501,7 @@ class MapManager {
 
         // Use the Advanced Cesium Manager instead
         if (window.advancedCesium && window.advancedCesium.viewer) {
-            console.log('Activating Advanced Cesium 3D Battle View...');
+            // Debug log removed
             // Call show() method to trigger optimal view reset
             window.advancedCesium.show();
 
@@ -450,9 +510,9 @@ class MapManager {
                     // Update tracks using advanced Cesium
                     if (this.tracks && this.tracks.length > 0) {
                         window.advancedCesium.updateTracks(this.tracks);
-                        console.log(`Updated 3D Battle View with ${this.tracks.length} tracks`);
+                        // Debug log removed
                     }
-                    console.log('3D Battle View activated successfully');
+                    // Debug log removed
                 } catch (error) {
                     console.error('Error activating advanced 3D view:', error);
                 }
@@ -463,7 +523,7 @@ class MapManager {
     }
 
     switchTo2D() {
-        console.log('Switching to 2D Standard View...');
+        // Debug log removed
         this.is3DMode = false;
 
         // Clear any existing track selections
@@ -496,7 +556,7 @@ class MapManager {
                 this.updateLeafletTracks(this.tracks);
                 // Update highlighting if there are selected tracks
                 this.updateTrackHighlighting();
-                console.log('Resizing Leaflet map and updating tracks...');
+                // Debug log removed
             }, 100);
         }
     }
@@ -555,10 +615,6 @@ class MapManager {
     onTrackClick(trackId, event) {
         // Check if shift is pressed and dashboard is available
         if (event.shiftKey && window.dashboard) {
-            // Prevent default marker popup
-            event.preventDefault();
-            event.stopPropagation();
-            
             // Handle track selection for battle group creation
             if (window.dashboard.isMultiSelecting) {
                 if (window.dashboard.selectedTracks.has(trackId)) {
@@ -573,9 +629,10 @@ class MapManager {
                 // Update dashboard display
                 window.dashboard.updateTracksDisplay();
                 
-                console.log(`Track ${trackId} ${window.dashboard.selectedTracks.has(trackId) ? 'selected' : 'deselected'} from map`);
+                // Debug log removed ? 'selected' : 'deselected'} from map`);
             }
         }
+        // Normal clicks (without shift) will allow popup to show naturally
     }
 
     updateTrackHighlighting() {

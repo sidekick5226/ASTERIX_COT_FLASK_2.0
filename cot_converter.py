@@ -104,7 +104,6 @@ class CoTConverter:
             return f'<?xml version="1.0" encoding="UTF-8"?>\n{xml_str}'
             
         except Exception as e:
-            print(f"Error converting track to CoT: {e}")
             return ""
     
     def convert_multiple_tracks_to_cot(self, tracks: List[Dict[str, Any]], 
@@ -140,7 +139,6 @@ class CoTConverter:
             return f'<?xml version="1.0" encoding="UTF-8"?>\n{xml_str}'
             
         except Exception as e:
-            print(f"Error converting multiple tracks to CoT: {e}")
             return ""
     
     def _generate_uid(self, track: Dict[str, Any]) -> str:
@@ -225,7 +223,6 @@ class CoTConverter:
             return tracks
             
         except Exception as e:
-            print(f"Error parsing CoT XML: {e}")
             return []
     
     def _parse_cot_event(self, event: ET.Element) -> Optional[Dict[str, Any]]:
@@ -288,7 +285,6 @@ class CoTConverter:
             return track
             
         except Exception as e:
-            print(f"Error parsing CoT event: {e}")
             return None
     
     def _determine_track_type_from_cot(self, cot_type: str) -> str:
@@ -315,7 +311,7 @@ class CoTConverter:
             return 'Unknown'
     
     def create_cot_chat_message(self, sender: str, message: str, 
-                               recipients: List[str] = None) -> str:
+                               recipients: Optional[List[str]] = None) -> str:
         """
         Create CoT chat message XML.
         
@@ -378,7 +374,6 @@ class CoTConverter:
             return f'<?xml version="1.0" encoding="UTF-8"?>\n{xml_str}'
             
         except Exception as e:
-            print(f"Error creating CoT chat message: {e}")
             return ""
     
     def get_supported_cot_types(self) -> Dict[str, str]:

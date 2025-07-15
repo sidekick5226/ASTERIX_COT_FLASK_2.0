@@ -1,7 +1,7 @@
 // Dashboard functionality
 class SurveillanceDashboard {
     constructor() {
-        console.log('Dashboard constructor called');
+        // Dashboard constructor
         this.tracks = new Map();
         this.events = []; // Historical events for Event Log
         this.monitorEvents = []; // Real-time events for Event Monitor
@@ -15,7 +15,7 @@ class SurveillanceDashboard {
         this.battleGroups = new Map(); // Battle Groups storage
         this.battleGroupCounter = 0; // Counter for naming battle groups
         this.isMultiSelecting = false; // Track if we're in multi-select mode
-        console.log('Dashboard properties initialized');
+        // Dashboard properties initialized
         
         this.socket = io({
             timeout: 120000,
@@ -36,42 +36,42 @@ class SurveillanceDashboard {
         this.loadInitialData();
         this.setupTabHandlers();
         this.startPeriodicUpdates(); // Always check for updates every second
-        console.log('Dashboard initialized with multi-select functionality');
+        // Dashboard initialized with multi-select functionality
     }
 
     setupSocketHandlers() {
-        console.log('Setting up socket handlers...');
+        // Setting up socket handlers
 
         // Handle real-time track updates
         this.socket.on('track_update', (tracks) => {
-            console.log('Received track_update:', tracks.length, 'tracks');
+            // Debug log removed
             this.onTrackUpdate(tracks);
         });
 
         // Handle real-time event notes updates
         this.socket.on('event_notes_updated', (data) => {
-            console.log('Received event_notes_updated:', data);
+            // Debug log removed
             this.handleEventNotesUpdate(data);
         });
 
         // Handle real-time new events
         this.socket.on('new_event', (event) => {
-            console.log('Received new_event:', event);
+            // Debug log removed
             this.handleNewEvent(event);
         });
 
         // Handle connection status
         this.socket.on('status', (data) => {
-            console.log('Status update:', data.msg);
+            // Debug log removed
             this.showNotification(data.msg, 'info');
         });
 
         this.socket.on('connect', () => {
-            console.log('Connected to surveillance system');
+            // Debug log removed
         });
 
         this.socket.on('disconnect', () => {
-            console.log('Disconnected from surveillance system');
+            // Debug log removed
         });
 
         this.socket.on('connect_error', (error) => {
@@ -220,7 +220,7 @@ class SurveillanceDashboard {
             await this.loadEventLog();
         }, 3000);
 
-        console.log('Started periodic updates - Event Monitor will auto-refresh every 1.5 seconds, Event Log every 3 seconds');
+        // Debug log removed
     }
 
     stopPeriodicUpdates() {
@@ -287,7 +287,7 @@ class SurveillanceDashboard {
         });
 
         document.getElementById('total-tracks').textContent = this.tracks.size;
-        console.log(`Updated tracks display with ${this.tracks.size} tracks`);
+        // Debug log removed
         
         // Always reapply Active Tracks table filters to maintain table state
         this.applyFilters();
@@ -348,23 +348,23 @@ class SurveillanceDashboard {
     }
 
     filterTracks(type) {
-        console.log('filterTracks called with type:', type);
+        // Debug log removed
         
         // Check if Event Monitor filters are active - if so, don't interfere with map filtering
         const trackFilter = document.getElementById('monitor-track-filter')?.value?.toLowerCase() || '';
         const eventTypeFilter = document.getElementById('monitor-event-type-filter')?.value || '';
         const trackTypeFilter = document.getElementById('monitor-track-type-filter')?.value || '';
         
-        console.log('Event Monitor filters check:', { trackFilter, eventTypeFilter, trackTypeFilter });
+        // Debug log removed
         
         // Only apply Active Tracks filter to map if Event Monitor filters are not active
         if (!trackFilter && !eventTypeFilter && !trackTypeFilter) {
-            console.log('No Event Monitor filters active - applying Active Tracks filter to map');
+            // Debug log removed
             if (window.mapManager) {
                 window.mapManager.filterByType(type);
             }
         } else {
-            console.log('Event Monitor filters are active - skipping Active Tracks map filter');
+            // Debug log removed
         }
 
         // Always apply the filter to the tracks table
@@ -435,11 +435,11 @@ class SurveillanceDashboard {
     updateEventsDisplay() {
         const tbody = document.getElementById('events-table-body');
         if (!tbody) {
-            console.log('events-table-body not found!');
+            // Debug log removed
             return;
         }
 
-        console.log('Updating events display with', this.monitorEvents.length, 'monitor events');
+        // Debug log removed
 
         // Clear existing content
         tbody.innerHTML = '';
@@ -486,7 +486,7 @@ class SurveillanceDashboard {
 
         // Show real-time monitor events (most recent first)
         const eventsToShow = filteredEvents.slice(-50).reverse();
-        console.log('Displaying', eventsToShow.length, 'filtered events out of', this.monitorEvents.length, 'total events');
+        // Debug log removed
 
         // Update event count display
         const eventCountSpan = document.getElementById('monitor-event-count');
@@ -539,7 +539,7 @@ class SurveillanceDashboard {
             tbody.appendChild(row);
         });
 
-        console.log('Added', tbody.children.length, 'rows to events table');
+        // Debug log removed
     }
 
     async loadMonitorEvents() {
@@ -569,7 +569,7 @@ class SurveillanceDashboard {
 
                 // Only log if there's a change to avoid console spam
                 if (this.monitorEvents.length !== previousCount) {
-                    console.log(`Monitor events updated: ${this.monitorEvents.length} events (was ${previousCount})`);
+                    // Debug log removed`);
                 }
             }
         } catch (error) {
@@ -583,16 +583,16 @@ class SurveillanceDashboard {
     onMonitorEvents(events) {
         // This method is kept for compatibility but no longer used
         // Monitor events are now loaded via polling
-        console.log('Legacy monitor events handler called');
+        // Debug log removed
     }
 
     async loadEventLog() {
         try {
-            console.log('Loading Event Log data...');
+            // Debug log removed
             const response = await fetch(`/api/events?page=${this.currentPage}&per_page=20`);
             const data = await response.json();
 
-            console.log('Event Log data received:', data);
+            // Debug log removed
             this.updateEventLogDisplay(data.events);
             this.updatePagination(data.current_page, data.pages);
         } catch (error) {
@@ -609,7 +609,7 @@ class SurveillanceDashboard {
 
         tbody.innerHTML = '';
 
-        console.log('Displaying', events.length, 'events in Event Log');
+        // Debug log removed
 
         events.forEach(event => {
             const row = document.createElement('tr');
@@ -630,7 +630,7 @@ class SurveillanceDashboard {
             tbody.appendChild(row);
         });
 
-        console.log('Added', tbody.children.length, 'rows to Event Log table');
+        // Debug log removed
     }
 
     updatePagination(currentPage, totalPages) {
@@ -670,7 +670,7 @@ class SurveillanceDashboard {
         const endDate = document.getElementById('end-date').value;
         const eventType = document.getElementById('event-type-filter').value;
 
-        console.log('Filtering events:', { startDate, endDate, eventType });
+        // Debug log removed
         
         try {
             // Build query parameters
@@ -715,10 +715,10 @@ class SurveillanceDashboard {
     }
 
     exportEventLog() {
-        console.log('Export button clicked');
+        // Debug log removed
         // Call the API to export the event log (without clearing)
         if (confirm('This will export all events to CSV. The log will remain in the system. Continue?')) {
-            console.log('User confirmed export');
+            // Debug log removed
             fetch('/api/export-events', {
                 method: 'POST',
                 headers: {
@@ -727,7 +727,7 @@ class SurveillanceDashboard {
             })
             .then(response => response.json())
             .then(data => {
-                console.log('Export response:', data);
+                // Debug log removed
                 if (data.status === 'success') {
                     this.showNotification(data.message, 'success');
                     // No need to refresh the event log since it wasn't cleared
@@ -740,7 +740,7 @@ class SurveillanceDashboard {
                 this.showNotification('Error exporting event log', 'error');
             });
         } else {
-            console.log('User cancelled export');
+            // Debug log removed
         }
     }
 
@@ -774,7 +774,7 @@ class SurveillanceDashboard {
         fetch('/api/surveillance/start', { method: 'POST' })
             .then(response => response.json())
             .then(data => {
-                console.log('Surveillance started:', data);
+                // Debug log removed
                 startBtn.innerHTML = '<i class="fas fa-play"></i> Start Surveillance';
                 this.showNotification('Surveillance started - Live tracking active', 'success');
             })
@@ -811,7 +811,7 @@ class SurveillanceDashboard {
         fetch('/api/surveillance/stop', { method: 'POST' })
             .then(response => response.json())
             .then(data => {
-                console.log('Surveillance stopped:', data);
+                // Debug log removed
                 stopBtn.innerHTML = '<i class="fas fa-stop"></i> Stop & Clear';
                 this.showNotification('Surveillance stopped - All tracks cleared', 'info');
             })
@@ -1061,7 +1061,7 @@ class SurveillanceDashboard {
     }
 
     handleEventNotesUpdate(data) {
-        console.log('Handling event notes update:', data);
+        // Debug log removed
         
         // Find the event row in the current display
         const eventRows = document.querySelectorAll('#events-log-body tr');
@@ -1104,7 +1104,7 @@ class SurveillanceDashboard {
     // ...existing code...
 
     onTrackUpdate(tracks) {
-        console.log('onTrackUpdate called with', tracks.length, 'tracks');
+        // Debug log removed
         tracks.forEach(track => {
             this.tracks.set(track.track_id, track);
         });
@@ -1117,7 +1117,7 @@ class SurveillanceDashboard {
 
     updateMapWithCurrentFilters() {
         if (!window.mapManager) {
-            console.log('MapManager not available');
+            // Debug log removed
             return;
         }
 
@@ -1129,24 +1129,24 @@ class SurveillanceDashboard {
         const trackFilter = document.getElementById('monitor-track-filter')?.value?.toLowerCase() || '';
         const trackTypeFilter = document.getElementById('monitor-track-type-filter')?.value || '';
         
-        console.log('Event Monitor filters:', { trackFilter, trackTypeFilter });
+        // Debug log removed
         
         if (trackFilter || trackTypeFilter) {
             // Event Monitor filters are active - apply them to the map
-            console.log('Applying Event Monitor filters to map');
+            // Debug log removed
             this.applyFiltersToMap(trackFilter, trackTypeFilter);
         } else {
             // No Event Monitor filters - check if Active Tracks tab filter should be applied
             const activeTracksFilter = document.getElementById('track-type-filter')?.value || '';
-            console.log('Active Tracks filter:', activeTracksFilter);
+            // Debug log removed
             
             if (activeTracksFilter) {
                 // Apply Active Tracks filter to map
-                console.log('Applying Active Tracks filter to map');
+                // Debug log removed
                 window.mapManager.filterByType(activeTracksFilter);
             } else {
                 // No filters active - show all tracks
-                console.log('No filters active - showing all tracks on map');
+                // Debug log removed
                 window.mapManager.updateTracks(allTracks);
             }
         }
@@ -1182,13 +1182,13 @@ class SurveillanceDashboard {
     
     // Multi-track selection methods
     bindMultiSelectEvents() {
-        console.log('Binding multi-select events...');
+        // Debug log removed
         
         // Track shift key state globally
         document.addEventListener('keydown', (e) => {
             // Don't activate multi-select mode if dialog is open or if user is typing in an input field
             if (e.key === 'Shift' && !this.isDialogOpen() && !this.isTypingInInput(e.target)) {
-                console.log('Shift key pressed - entering multi-select mode');
+                // Debug log removed
                 this.isMultiSelecting = true;
                 document.body.classList.add('multi-select-mode');
                 
@@ -1205,7 +1205,7 @@ class SurveillanceDashboard {
         document.addEventListener('keyup', (e) => {
             // Only process shift release if we were in multi-select mode
             if (e.key === 'Shift' && this.isMultiSelecting) {
-                console.log('Shift key released - exiting multi-select mode');
+                // Debug log removed
                 this.isMultiSelecting = false;
                 document.body.classList.remove('multi-select-mode');
                 
@@ -1219,15 +1219,15 @@ class SurveillanceDashboard {
                 
                 // Show battle group dialog if we have multiple tracks selected
                 if (this.selectedTracks.size > 1) {
-                    console.log(`Showing battle group dialog for ${this.selectedTracks.size} selected tracks`);
-                    console.log('Selected tracks:', Array.from(this.selectedTracks));
+                    // Debug log removed
+                    // Debug log removed);
                     
                     // Add a small delay to ensure the UI is ready
                     setTimeout(() => {
                         this.showBattleGroupDialog();
                     }, 100);
                 } else {
-                    console.log(`Only ${this.selectedTracks.size} tracks selected - dialog not shown`);
+                    // Debug log removed
                     // Clear selection and highlighting if not enough tracks
                     this.selectedTracks.clear();
                     this.updateTracksDisplay();
@@ -1258,20 +1258,20 @@ class SurveillanceDashboard {
     }
 
     handleTrackRowClick(event, trackId) {
-        console.log(`Track row clicked: ${trackId}, multi-selecting: ${this.isMultiSelecting}`);
+        // Debug log removed
         
         if (this.isMultiSelecting) {
             // Multi-select mode
             if (this.selectedTracks.has(trackId)) {
                 this.selectedTracks.delete(trackId);
-                console.log(`Deselected track ${trackId}, total selected: ${this.selectedTracks.size}`);
+                // Debug log removed
             } else {
                 this.selectedTracks.add(trackId);
-                console.log(`Selected track ${trackId}, total selected: ${this.selectedTracks.size}`);
+                // Debug log removed
             }
             
             // Log current selection state
-            console.log('Current selected tracks:', Array.from(this.selectedTracks));
+            // Debug log removed);
             
             // Update the track display to show selection
             this.updateTracksDisplay();
@@ -1291,12 +1291,12 @@ class SurveillanceDashboard {
             
             // Focus on single track
             this.trackOnMap(trackId);
-            console.log(`Single track selected: ${trackId}`);
+            // Debug log removed
         }
     }
 
     showBattleGroupDialog() {
-        console.log('Attempting to show battle group dialog...');
+        // Debug log removed
         
         // Ensure multi-select mode is disabled when dialog opens
         this.isMultiSelecting = false;
@@ -1309,7 +1309,7 @@ class SurveillanceDashboard {
         
         if (!dialog) {
             console.error('Battle group dialog not found!');
-            console.log('Available elements:', document.querySelectorAll('[id*="battle"]'));
+            // Debug log removed);
             return;
         }
         
@@ -1328,7 +1328,7 @@ class SurveillanceDashboard {
             return;
         }
         
-        console.log('All dialog elements found, updating content...');
+        // Debug log removed
         
         // Update dialog content
         selectedCount.textContent = this.selectedTracks.size;
@@ -1351,7 +1351,7 @@ class SurveillanceDashboard {
                 `;
                 selectedTracksPreview.appendChild(trackElement);
             } else {
-                console.log(`Track ${trackId} not found in tracks map - adding placeholder`);
+                // Debug log removed
                 const trackElement = document.createElement('div');
                 trackElement.className = 'flex items-center justify-between py-1';
                 trackElement.innerHTML = `
@@ -1363,7 +1363,7 @@ class SurveillanceDashboard {
         });
         
         // Show dialog with additional logging
-        console.log('Removing hidden class from dialog');
+        // Debug log removed
         dialog.classList.remove('hidden');
         
         // Force display and visibility
@@ -1381,20 +1381,14 @@ class SurveillanceDashboard {
         // Force visibility check
         setTimeout(() => {
             const computedStyle = window.getComputedStyle(dialog);
-            console.log('Dialog visibility after show:', {
-                display: computedStyle.display,
-                visibility: computedStyle.visibility,
-                opacity: computedStyle.opacity,
-                zIndex: computedStyle.zIndex,
-                hasHiddenClass: dialog.classList.contains('hidden')
-            });
+            // Debug log removed
         }, 50);
         
-        console.log('Battle group dialog should now be visible');
+        // Debug log removed
     }
 
     hideBattleGroupDialog() {
-        console.log('Hiding battle group dialog...');
+        // Debug log removed
         const dialog = document.getElementById('battle-group-dialog');
         const nameInput = document.getElementById('battle-group-name-input');
         
@@ -1412,20 +1406,20 @@ class SurveillanceDashboard {
                 nameInput.value = '';
             }
             
-            console.log('Battle group dialog hidden');
+            // Debug log removed
         } else {
             console.error('Battle group dialog not found when trying to hide');
         }
     }
 
     bindBattleGroupEvents() {
-        console.log('Binding battle group dialog events...');
+        // Debug log removed
         
         // Cancel button
         const cancelBtn = document.getElementById('cancel-battle-group');
         if (cancelBtn) {
             cancelBtn.addEventListener('click', () => {
-                console.log('Cancel button clicked');
+                // Debug log removed
                 this.selectedTracks.clear();
                 this.updateTracksDisplay();
                 // Remove highlighting from map
@@ -1442,7 +1436,7 @@ class SurveillanceDashboard {
         const confirmBtn = document.getElementById('confirm-battle-group');
         if (confirmBtn) {
             confirmBtn.addEventListener('click', () => {
-                console.log('Confirm button clicked');
+                // Debug log removed
                 this.createBattleGroup();
             });
         } else {
@@ -1454,7 +1448,7 @@ class SurveillanceDashboard {
         if (nameInput) {
             nameInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
-                    console.log('Enter key pressed in name input - creating battle group');
+                    // Debug log removed
                     this.createBattleGroup();
                 }
             });
@@ -1466,7 +1460,7 @@ class SurveillanceDashboard {
             dialog.addEventListener('click', (e) => {
                 // Only close if clicking on the backdrop (not the dialog content)
                 if (e.target === dialog) {
-                    console.log('Dialog backdrop clicked - closing dialog');
+                    // Debug log removed
                     this.selectedTracks.clear();
                     this.updateTracksDisplay();
                     // Remove highlighting from map
@@ -1483,7 +1477,7 @@ class SurveillanceDashboard {
             if (e.key === 'Escape') {
                 const dialog = document.getElementById('battle-group-dialog');
                 if (dialog && !dialog.classList.contains('hidden')) {
-                    console.log('Escape key pressed - closing dialog');
+                    // Debug log removed
                     this.selectedTracks.clear();
                     this.updateTracksDisplay();
                     // Remove highlighting from map
@@ -1497,7 +1491,7 @@ class SurveillanceDashboard {
     }
 
     createBattleGroup() {
-        console.log('Creating battle group...');
+        // Debug log removed
         const selectedTrackIds = Array.from(this.selectedTracks);
         const nameInput = document.getElementById('battle-group-name-input');
         
@@ -1509,13 +1503,13 @@ class SurveillanceDashboard {
             // Use custom name
             battleGroupName = customName;
             battleGroupId = `BG-${customName.replace(/[^a-zA-Z0-9]/g, '')}`; // Clean ID
-            console.log(`Using custom name: ${battleGroupName}`);
+            // Debug log removed
         } else {
             // Use default naming scheme
             const defaultLetter = String.fromCharCode(65 + this.battleGroupCounter);
             battleGroupName = `Battle Group ${defaultLetter}`;
             battleGroupId = `BG-${defaultLetter}`;
-            console.log(`Using default name: ${battleGroupName}`);
+            // Debug log removed
         }
         
         const battleGroup = {
@@ -1565,7 +1559,7 @@ class SurveillanceDashboard {
             window.cesiumAdvanced.highlightBattleGroup(battleGroup);
         }
         
-        console.log('Battle group created and dialog hidden:', battleGroup);
+        // Debug log removed
     }
 
     getBattleGroupColor(index) {
@@ -1671,7 +1665,7 @@ class SurveillanceDashboard {
     }
 
     applyMonitorFilters() {
-        console.log('Applying monitor filters...');
+        // Debug log removed
         
         // Update the Event Monitor display
         this.updateEventsDisplay();
@@ -1681,18 +1675,18 @@ class SurveillanceDashboard {
     }
 
     applyFiltersToMap(trackFilter, trackTypeFilter) {
-        console.log('applyFiltersToMap called with:', { trackFilter, trackTypeFilter });
+        // Debug log removed
         
         // Always start with the full track list from the dashboard
         let filteredTracks = Array.from(this.tracks.values());
-        console.log('Total tracks before filtering:', filteredTracks.length);
+        // Debug log removed
         
         // Apply track ID filter
         if (trackFilter) {
             filteredTracks = filteredTracks.filter(track => 
                 track.track_id?.toLowerCase().includes(trackFilter)
             );
-            console.log('After track ID filter:', filteredTracks.length);
+            // Debug log removed
         }
         
         // Apply track type filter
@@ -1700,18 +1694,18 @@ class SurveillanceDashboard {
             filteredTracks = filteredTracks.filter(track => 
                 track.track_type === trackTypeFilter || track.type === trackTypeFilter
             );
-            console.log('After track type filter:', filteredTracks.length);
+            // Debug log removed
         }
         
         // Update map with filtered tracks
         if (window.mapManager) {
             window.mapManager.updateTracks(filteredTracks);
-            console.log(`Map updated with ${filteredTracks.length} filtered tracks`);
+            // Debug log removed
         }
     }
 
     clearMonitorFilters() {
-        console.log('Clearing monitor filters...');
+        // Debug log removed
         // Clear all filter inputs
         document.getElementById('monitor-track-filter').value = '';
         document.getElementById('monitor-event-type-filter').value = '';
@@ -1722,7 +1716,7 @@ class SurveillanceDashboard {
     }
 
     handleNewEvent(event) {
-        console.log('Handling new event:', event);
+        // Debug log removed
         
         // Add the new event to the events array (at the beginning for newest first)
         this.events.unshift(event);
@@ -1737,10 +1731,10 @@ class SurveillanceDashboard {
 
 // Initialize dashboard when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM loaded, initializing dashboard...');
+    // Debug log removed
     try {
         window.dashboard = new SurveillanceDashboard();
-        console.log('Dashboard created successfully:', window.dashboard);
+        // Debug log removed
     } catch (error) {
         console.error('Error creating dashboard:', error);
     }

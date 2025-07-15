@@ -67,7 +67,7 @@ class AdvancedCesiumManager {
             }
         });
 
-        console.log('Advanced Cesium viewer initialized');
+        // Debug log removed
     }
 
     async loadLocalTerrain() {
@@ -83,7 +83,7 @@ class AdvancedCesiumManager {
             // });
             // this.viewer.terrainProvider = this.terrainProvider;
 
-            console.log('Terrain ready for local quantized-mesh tiles integration');
+            // Debug log removed
         } catch (error) {
             console.error('Failed to load terrain:', error);
             // Fallback to ellipsoid terrain
@@ -95,7 +95,7 @@ class AdvancedCesiumManager {
         try {
             // Skip 3D buildings for now - ready for local 3D Tiles integration
             // This will be replaced with local OSM/LiDAR converted 3D Tiles
-            console.log('3D buildings ready for local 3D Tiles integration');
+            // Debug log removed
 
             // In production, this would be:
             // this.buildingTileset = await Cesium.Cesium3DTileset.fromUrl('/3dtiles/buildings/');
@@ -126,7 +126,7 @@ class AdvancedCesiumManager {
     addCameraControlsUI() {
         // Camera controls are now handled directly through double-click to follow
         // and deselection to stop following - no UI buttons needed
-        console.log('Camera controls: Double-click to follow, deselect to stop');
+        // Debug log removed
     }
 
     addCompassUI() {
@@ -297,18 +297,18 @@ class AdvancedCesiumManager {
 
             // Listen for CoT-specific updates
             window.socket.on('cot_update', (cotData) => {
-                console.log('Received CoT update:', cotData.length, 'tracks');
+                // Debug log removed
                 this.updateUnitsFromCoT(cotData.map(item => item.track_data));
             });
 
             // Handle CoT batch responses
             window.socket.on('cot_batch', (data) => {
-                console.log('Received CoT batch:', data.track_count, 'tracks');
+                // Debug log removed
             });
 
             // Handle CoT heartbeat
             window.socket.on('cot_heartbeat', (data) => {
-                console.log('CoT heartbeat received');
+                // Debug log removed
             });
 
             // Handle CoT errors
@@ -325,14 +325,14 @@ class AdvancedCesiumManager {
             }, 30000); // Every 30 seconds
         }
 
-        console.log('CoT WebSocket connection established');
+        // Debug log removed
     }
 
     setupClickHandlers() {
         // Handle entity selection for normal info popup behavior
         this.viewer.selectedEntityChanged.addEventListener((selectedEntity) => {
             if (selectedEntity && this.unitEntities.has(selectedEntity.id)) {
-                console.log('Unit selected:', selectedEntity.id);
+                // Debug log removed
                 // Entity info box will show automatically - no custom handling needed
             } else if (!selectedEntity) {
                 // Entity deselected - turn off camera follow
@@ -340,11 +340,17 @@ class AdvancedCesiumManager {
             }
         });
 
+        // Use ScreenSpaceEventHandler for proper click handling with priority
+        const handler = new Cesium.ScreenSpaceEventHandler(this.viewer.scene.canvas);
+        
         // Handle single clicks for track selection (with shift key)
-        this.viewer.cesiumWidget.canvas.addEventListener('click', (event) => {
-            if (event.shiftKey && window.dashboard) {
+        handler.setInputAction((event) => {
+            if (event.modifier === Cesium.KeyboardEventModifier.SHIFT && window.dashboard) {
                 const pickedEntity = this.viewer.scene.pick(event.position);
                 if (pickedEntity && pickedEntity.id && this.unitEntities.has(pickedEntity.id.id)) {
+                    // Prevent info box from showing by clearing selection
+                    this.viewer.selectedEntity = undefined;
+                    
                     // Extract track ID from entity ID (format: unit_TRACK_ID)
                     const trackId = pickedEntity.id.id.replace('unit_', '');
                     
@@ -365,20 +371,20 @@ class AdvancedCesiumManager {
                             this.highlightSelectedTracks(Array.from(window.dashboard.selectedTracks));
                         }
                         
-                        console.log(`Track ${trackId} ${window.dashboard.selectedTracks.has(trackId) ? 'selected' : 'deselected'} from 3D map`);
+                        // Debug log removed ? 'selected' : 'deselected'} from 3D map`);
                     }
                 }
             }
-        });
+        }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
         // Handle double-click for follow mode (no confirmation popup)
-        this.viewer.cesiumWidget.canvas.addEventListener('dblclick', (event) => {
+        handler.setInputAction((event) => {
             const pickedEntity = this.viewer.scene.pick(event.position);
             if (pickedEntity && pickedEntity.id && this.unitEntities.has(pickedEntity.id.id)) {
                 // Start following immediately without confirmation dialog
                 this.startFollowCamera(pickedEntity.id);
             }
-        });
+        }, Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
     }
 
     updateUnitsFromCoT(tracks) {
@@ -647,7 +653,7 @@ class AdvancedCesiumManager {
     }
 
     selectUnit(entity) {
-        console.log('Unit selected:', entity.name);
+        // Debug log removed
 
         // Highlight selected unit
         if (entity.model) {
@@ -662,12 +668,12 @@ class AdvancedCesiumManager {
     startFollowCamera(entity) {
         this.cameraFollowTarget = entity;
         this.followMode = 'chase';
-        console.log(`Following ${entity.name} in chase mode`);
+        // Debug log removed
     }
 
     stopFollowCamera() {
         if (this.cameraFollowTarget) {
-            console.log('Stopping camera follow mode and resetting to optimal view');
+            // Debug log removed
             this.cameraFollowTarget = null;
             
             // Clear any selected entity to ensure clean state
@@ -901,7 +907,7 @@ class AdvancedCesiumManager {
         // Create detailed description for track information popup
         const trackDescription = this.createTrackDescription(track, altitude);
 
-        const entity = this.viewer.entities.add({
+        const entityConfig = {
             id: trackId,
             name: trackId,
             description: trackDescription,
@@ -928,13 +934,32 @@ class AdvancedCesiumManager {
                 trackData: track,
                 lastUpdated: new Date().toISOString()
             })
-        });
+        };
+
+        // Add MIL-STD-2525 billboard if available
+        if (window.milStd2525) {
+            const billboard = window.milStd2525.createCesiumBillboard(track);
+            entityConfig.billboard = {
+                image: billboard,
+                scale: 1.0,
+                pixelOffset: new Cesium.Cartesian2(0, -20),
+                distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0.0, 500000.0)
+            };
+        }
+
+        const entity = this.viewer.entities.add(entityConfig);
 
         this.unitEntities.set(trackId, entity);
         return entity;
     }
 
     getTrackColor(trackType) {
+        // Use MIL-STD-2525 colors if available
+        if (window.milStd2525) {
+            return window.milStd2525.getCesiumColor(trackType);
+        }
+        
+        // Fallback to original colors
         switch (trackType) {
             case 'Aircraft': return Cesium.Color.CYAN;
             case 'Vessel': return Cesium.Color.fromCssColorString('#9333ea');

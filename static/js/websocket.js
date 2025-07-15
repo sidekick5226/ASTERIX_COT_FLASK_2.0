@@ -21,14 +21,14 @@ class WebSocketManager {
             this.socket = io();
             
             this.socket.on('connect', () => {
-                console.log('Connected to surveillance system');
+                // Debug log removed
                 this.isConnected = true;
                 this.reconnectAttempts = 0;
                 this.updateConnectionStatus(true);
             });
             
             this.socket.on('disconnect', () => {
-                console.log('Disconnected from surveillance system');
+                // Debug log removed
                 this.isConnected = false;
                 this.updateConnectionStatus(false);
                 this.attemptReconnect();
@@ -53,7 +53,7 @@ class WebSocketManager {
             });
             
             this.socket.on('status', (data) => {
-                console.log('Status update:', data.msg);
+                // Debug log removed
             });
             
         } catch (error) {
@@ -82,7 +82,7 @@ class WebSocketManager {
         this.reconnectAttempts++;
         // Reduce console spam
         if (this.reconnectAttempts <= 2) {
-            console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+            // Debug log removed`);
         }
         
         setTimeout(() => {
@@ -108,7 +108,7 @@ class WebSocketManager {
                 window.mapManager.updateTracks(tracks);
             }
             
-            console.log(`Updated ${tracks.length} tracks`);
+            // Debug log removed
         } catch (error) {
             console.error('Error handling track update:', error);
         }
@@ -132,7 +132,7 @@ class WebSocketManager {
                 }
             }
             
-            console.log('New event received:', event);
+            // Debug log removed
         } catch (error) {
             console.error('Error handling event update:', error);
         }

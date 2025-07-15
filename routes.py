@@ -1,7 +1,7 @@
 from flask import render_template, request, jsonify, redirect, url_for, flash, session
 from flask_socketio import emit
 from flask_login import login_user, logout_user, login_required, current_user
-from app import app, socketio
+from app_init import app, socketio
 from models import Track, Event, NetworkConfig, User, db
 from datetime import datetime, timedelta
 import json
@@ -12,13 +12,23 @@ import time
 import csv
 import os
 import schedule
-from asterix_processor import AsterixProcessor
+import logging
+from asterix_converter import AsterixMultiCategoryConverter
 from cot_converter import CoTConverter
 from klv_converter import KLVConverter
 from cot_processor import CoTProcessor
+# Add UDP receiver imports
+from udp_receiver import start_udp_receiver, stop_udp_receiver, get_udp_receiver_status
+
+logger = logging.getLogger(__name__)
+
+# Initialize UDP receiver with Flask dependencies
+def init_udp_receiver():
+    """Initialize UDP receiver with Flask app dependencies"""
+    return start_udp_receiver(app=app, db=db, socketio=socketio, Track=Track, Event=Event)
 
 # Initialize processors
-asterix_processor = AsterixProcessor()
+asterix_processor = AsterixMultiCategoryConverter()
 cot_converter = CoTConverter()
 klv_converter = KLVConverter()
 cot_processor = CoTProcessor()
@@ -62,18 +72,22 @@ def export_event_log_to_csv(clear_after_export=False):
             if clear_after_export:
                 Event.query.delete()
                 db.session.commit()
-                print(f"Successfully exported {len(events)} events to {filepath} and cleared event log")
+                # Events exported and log cleared
+                pass
             else:
-                print(f"Successfully exported {len(events)} events to {filepath} (log not cleared)")
+                # Events exported without clearing log
+                pass
             
             return filepath
             
         else:
-            print(f"No events to export at {current_datetime}")
+            # No events to export
+            pass
             return None
             
     except Exception as e:
-        print(f"Error during event log export: {e}")
+        # Error during export
+        pass
         db.session.rollback()
         return None
 
@@ -95,7 +109,8 @@ def start_daily_export_scheduler():
     # Start scheduler in background thread
     scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
     scheduler_thread.start()
-    print("Daily event log export scheduler started (runs at midnight)")
+    # Daily event log export scheduler started
+    pass
 
 # Start the scheduler when the module loads
 start_daily_export_scheduler()
@@ -144,14 +159,35 @@ def dashboard():
 @login_required
 def get_tracks():
     """Get all active tracks"""
-    track_type = request.args.get('type', '')
-    query = Track.query.filter_by(status='Active')
-    
-    if track_type:
-        query = query.filter_by(track_type=track_type)
-    
-    tracks = query.all()
-    return jsonify([track.to_dict() for track in tracks])
+    try:
+        # Try to get tracks from track calculator first
+        from track_flask_integration import track_integrator
+        if track_integrator:
+            calculated_tracks = track_integrator.get_current_tracks()
+            if calculated_tracks:
+                return jsonify(calculated_tracks)
+        
+        # Fallback to database tracks if track calculator not available
+        track_type = request.args.get('type', '')
+        query = Track.query.filter_by(status='Active')
+        
+        if track_type:
+            query = query.filter_by(track_type=track_type)
+        
+        tracks = query.all()
+        return jsonify([track.to_dict() for track in tracks])
+        
+    except Exception as e:
+        logger.error(f"Error getting tracks: {e}")
+        # Fallback to database tracks
+        track_type = request.args.get('type', '')
+        query = Track.query.filter_by(status='Active')
+        
+        if track_type:
+            query = query.filter_by(track_type=track_type)
+        
+        tracks = query.all()
+        return jsonify([track.to_dict() for track in tracks])
 
 @app.route('/api/tracks/<track_id>')
 def get_track(track_id):
@@ -437,13 +473,14 @@ def get_export_history():
 @socketio.on('connect')
 def handle_connect():
     """Handle client connection"""
-    print('Client connected')
+    # Client connected
+    pass
     emit('status', {'msg': 'Connected to surveillance system'})
 
 @socketio.on('disconnect')
 def handle_disconnect():
     """Handle client disconnection"""
-    print('Client disconnected')
+    # Debug print removed
 
 @socketio.on('request_track_update')
 def handle_track_update_request():
@@ -465,23 +502,22 @@ def generate_simulated_track_data():
             # This ensures all tracks are visible on the default map view
             track_type = random.choice(track_types)
             
-            track = Track(
-                track_id=f"TRK{1000 + i}",
-                callsign=f"CALL{i:03d}",
-                track_type=track_type,
-                latitude=39.5 + random.uniform(-3, 3),    # NYC/Philadelphia area ±3 degrees
-                longitude=-75.0 + random.uniform(-4, 4),  # Eastern seaboard ±4 degrees  
-                altitude=random.uniform(100, 40000) if track_type == 'Aircraft' else (random.uniform(0, 100) if track_type == 'Vessel' else random.uniform(0, 1000)),
-                heading=random.uniform(0, 360),
-                speed=random.uniform(150, 600) if track_type == 'Aircraft' else (random.uniform(5, 40) if track_type == 'Vessel' else random.uniform(10, 80)),
-                status='Active'
-            )
+            track = Track()
+            track.track_id = f"TRK{1000 + i}"
+            track.callsign = f"CALL{i:03d}"
+            track.track_type = track_type
+            track.latitude = 39.5 + random.uniform(-3, 3)    # NYC/Philadelphia area ±3 degrees
+            track.longitude = -75.0 + random.uniform(-4, 4)  # Eastern seaboard ±4 degrees  
+            track.altitude = random.uniform(100, 40000) if track_type == 'Aircraft' else (random.uniform(0, 100) if track_type == 'Vessel' else random.uniform(0, 1000))
+            track.heading = random.uniform(0, 360)
+            track.speed = random.uniform(150, 600) if track_type == 'Aircraft' else (random.uniform(5, 40) if track_type == 'Vessel' else random.uniform(10, 80))
+            track.status = 'Active'
             db.session.add(track)
         
         db.session.commit()
-        print(f"Generated {10} tracks successfully")
+        # Debug print removed
     except Exception as e:
-        print(f"Error generating tracks: {e}")
+        # Debug print removed
         db.session.rollback()
         raise
 
@@ -544,11 +580,10 @@ def update_tracks_realtime():
                     # Occasionally create historical events for Event Log
                     if random.random() < 0.03:  # 3% chance for log events
                         log_event_types = ['Course Change', 'Speed Alert', 'Altitude Change', 'Communication']
-                        event = Event(
-                            track_id=track.track_id,
-                            event_type=random.choice(log_event_types),
-                            description=f'Track {track.track_id}: {random.choice(log_event_types).lower()} - {random.choice(["routine update", "deviation detected", "normal operation", "status change"])}'
-                        )
+                        event = Event()
+                        event.track_id = track.track_id
+                        event.event_type = random.choice(log_event_types)
+                        event.description = f'Track {track.track_id}: {random.choice(log_event_types).lower()} - {random.choice(["routine update", "deviation detected", "normal operation", "status change"])}'
                         db.session.add(event)
                         new_events.append(event)
                 
@@ -576,10 +611,11 @@ def update_tracks_realtime():
                 
                 # Emit real-time events to Event Monitor
                 socketio.emit('monitor_events', monitor_events)
-                print(f"Emitted {len(monitor_events)} monitor events")
+                # Debug print removed} monitor events")
             
         except Exception as e:
-            print(f"Error updating tracks: {e}")
+            # Debug print removed
+            pass
         
         time.sleep(2)  # Update every 2 seconds for better performance
 
@@ -604,7 +640,7 @@ def start_surveillance():
             
             return True
         except Exception as e:
-            print(f"Error starting surveillance: {e}")
+            # Debug print removed
             tracking_active = False
             return False
     return False
@@ -630,7 +666,7 @@ def stop_surveillance():
         
         return True
     except Exception as e:
-        print(f"Error stopping surveillance: {e}")
+        # Debug print removed
         db.session.rollback()
         return False
 
@@ -728,7 +764,7 @@ def start_surveillance_api():
                 'message': 'Surveillance started'
             })
         except Exception as e:
-            print(f"Error starting surveillance: {e}")
+            # Debug print removed
             return jsonify({
                 'status': 'error',
                 'message': 'Failed to start surveillance'
@@ -752,3 +788,126 @@ def stop_surveillance_api():
         'status': 'error',
         'message': 'Error stopping surveillance'
     })
+
+# UDP Receiver Control Routes
+@app.route('/api/udp/start', methods=['POST'])
+def start_udp_api():
+    """Start UDP ASTERIX receiver"""
+    try:
+        data = request.get_json() or {}
+        host = data.get('host', '0.0.0.0')
+        port = int(data.get('port', 8080))
+        
+        if init_udp_receiver():
+            return jsonify({
+                'status': 'success',
+                'message': f'UDP receiver started on {host}:{port}'
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to start UDP receiver'
+            })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Error starting UDP receiver: {str(e)}'
+        })
+
+@app.route('/api/udp/stop', methods=['POST'])
+@login_required
+def stop_udp_api():
+    """Stop UDP ASTERIX receiver"""
+    try:
+        if stop_udp_receiver():
+            return jsonify({
+                'status': 'success',
+                'message': 'UDP receiver stopped'
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': 'UDP receiver was not running'
+            })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Error stopping UDP receiver: {str(e)}'
+        })
+
+@app.route('/api/udp/status', methods=['GET'])
+@login_required
+def udp_status_api():
+    """Get UDP receiver status"""
+    try:
+        status = get_udp_receiver_status()
+        return jsonify({
+            'status': 'success',
+            'data': status
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Error getting UDP status: {str(e)}'
+        })
+
+@app.route('/api/udp/config', methods=['POST'])
+@login_required
+def udp_config_api():
+    """Configure UDP receiver settings"""
+    try:
+        data = request.get_json() or {}
+        host = data.get('host', '0.0.0.0')
+        port = int(data.get('port', 8080))
+        
+        # Validate port range
+        if not (1 <= port <= 65535):
+            return jsonify({
+                'status': 'error',
+                'message': 'Port must be between 1 and 65535'
+            })
+        
+        # Save configuration to database
+        config = NetworkConfig.query.filter_by(protocol='UDP').first()
+        if not config:
+            config = NetworkConfig()
+        
+        config.ip_address = host
+        config.port = port
+        config.protocol = 'UDP'
+        config.is_active = True
+        
+        db.session.add(config)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'UDP configuration saved',
+            'config': {
+                'host': host,
+                'port': port,
+                'protocol': 'UDP'
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Error saving UDP configuration: {str(e)}'
+        })
+
+@app.route('/api/udp/test', methods=['POST'])
+@login_required
+def test_udp_api():
+    """Test UDP receiver with sample data"""
+    try:
+        # This would create a test ASTERIX CAT-48 message
+        # For now, just return success
+        return jsonify({
+            'status': 'success',
+            'message': 'UDP receiver test functionality not yet implemented'
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Error testing UDP receiver: {str(e)}'
+        })

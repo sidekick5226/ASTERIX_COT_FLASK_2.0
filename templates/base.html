@@ -201,6 +201,32 @@
                 </div>
             </div>
             
+            <!-- UDP ASTERIX Receiver -->
+            <div class="p-4 border-b border-slate-600">
+                <h6 class="text-sm font-semibold text-slate-300 mb-3">
+                    <i class="fas fa-satellite-dish mr-2"></i> UDP ASTERIX Receiver
+                </h6>
+                <div class="space-y-3">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-2 h-2 rounded-full bg-red-500" id="udp-status-indicator"></div>
+                        <span class="text-xs text-slate-400" id="udp-status-text">Stopped</span>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button id="start-udp-btn" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-xs font-medium transition-colors">
+                            <i class="fas fa-play mr-1"></i> Start
+                        </button>
+                        <button id="stop-udp-btn" class="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-xs font-medium transition-colors">
+                            <i class="fas fa-stop mr-1"></i> Stop
+                        </button>
+                    </div>
+                    <div class="text-xs text-slate-400 space-y-1" id="udp-stats">
+                        <div>Messages: <span id="udp-msg-count">0</span></div>
+                        <div>Tracks: <span id="udp-track-count">0</span></div>
+                        <div>Errors: <span id="udp-error-count">0</span></div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Track Filters -->
             <div class="p-4 flex-1">
                 <h6 class="text-sm font-semibold text-slate-300 mb-3">
@@ -277,11 +303,13 @@
     <script src="https://cesium.com/downloads/cesiumjs/releases/1.104/Build/Cesium/Cesium.js"></script>
     
     <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='js/milstd2525.js') }}"></script>
     <script src="{{ url_for('static', filename='js/tabs.js') }}"></script>
     <script src="{{ url_for('static', filename='js/websocket.js') }}"></script>
     <script src="{{ url_for('static', filename='js/map.js') }}"></script>
     <script src="{{ url_for('static', filename='js/cesium-advanced.js') }}"></script>
     <script src="{{ url_for('static', filename='js/dashboard.js') }}?v=20250711"></script>
+    <script src="{{ url_for('static', filename='js/udp-receiver.js') }}"></script>
     
     {% block scripts %}{% endblock %}
 </body>

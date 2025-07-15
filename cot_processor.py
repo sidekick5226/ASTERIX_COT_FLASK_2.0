@@ -150,7 +150,6 @@ class CoTProcessor:
             return track
             
         except Exception as e:
-            print(f"Error parsing CoT XML: {e}")
             return None
     
     def _get_cot_type(self, track_type: str) -> str:
@@ -326,14 +325,12 @@ if __name__ == "__main__":
     
     # Convert to CoT XML
     cot_xml = processor.track_to_cot_xml(sample_track)
-    print("Generated CoT XML:")
-    print(cot_xml)
+    # Generated CoT XML
     
     # Parse back to track
     parsed_track = processor.cot_xml_to_track(cot_xml)
-    print("\nParsed track data:")
-    print(json.dumps(parsed_track, indent=2))
+    # Parsed track data
     
     # Validation
     is_valid = processor.validate_cot_xml(cot_xml)
-    print(f"\nCoT XML validation: {'Valid' if is_valid else 'Invalid'}")
+    # CoT XML validation result

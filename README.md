@@ -1,8 +1,147 @@
-# Surveillance COP Dashboard
+# Surveillance Sentry - ASTERIX Processing System
+
+## Quick Start
+
+### 🚀 Simple Start (Recommended)
+```bash
+python main.py
+```
+This starts the complete system with:
+- Flask web application on http://localhost:5000
+- UDP receiver listening on 0.0.0.0:8080
+- Real-time WebSocket connections
+- Default credentials: `user` / `pass`
+
+### 🎯 With PCAP Replay (Full Demo)
+```bash
+python start_surveillance.py --pcap cat48-only-plot-capture.pcap
+```
+This provides a complete demo by:
+- Starting the web application
+- Automatically replaying PCAP data after 5 seconds
+- Showing real-time ASTERIX CAT-48 processing
+- Displaying live tracks on the dashboard
+
+### ⚙️ Advanced Options
+
+#### Enhanced Startup with Custom PCAP Settings
+```bash
+# Replay at 2x speed with 10-second delay
+python start_surveillance.py --pcap cat48-only-plot-capture.pcap --pcap-speed 2.0 --pcap-delay 10
+
+# Replay to custom port
+python start_surveillance.py --pcap cat48-only-plot-capture.pcap --pcap-port 8081
+
+# All options
+python start_surveillance.py --pcap cat48-only-plot-capture.pcap --pcap-host 127.0.0.1 --pcap-port 8080 --pcap-speed 1.5 --pcap-delay 5
+```
+
+#### Manual PCAP Operations
+```bash
+# Analyze PCAP file contents
+python pcap_parser.py analyze cat48-only-plot-capture.pcap
+
+# Manual replay to UDP receiver
+python pcap_parser.py replay cat48-only-plot-capture.pcap
+
+# Custom replay settings
+python pcap_parser.py replay cat48-only-plot-capture.pcap 127.0.0.1 8080 2.0
+```
+
+#### Component Testing
+```bash
+# Test UDP receiver only
+python udp_receiver.py
+
+# Test simple UDP receiver (no Flask dependencies)
+python simple_udp_receiver.py
+
+# Test system integration
+python test_main_integration.py
+```
+
+### 🔧 System Architecture Options
+
+| Start Method | Use Case | Features |
+|--------------|----------|----------|
+| `python main.py` | Production/Development | Full system with manual data input |
+| `python start_surveillance.py --pcap <file>` | Demo/Testing | Automated PCAP replay with web interface |
+| `python udp_receiver.py` | Component Testing | UDP receiver only (standalone) |
+| `python pcap_parser.py` | Data Analysis | PCAP file analysis and manual replay |
+
+### 🌐 Access Points
+- **Web Dashboard**: http://localhost:5000
+- **UDP Receiver**: 0.0.0.0:8080
+- **Default Login**: `user` / `pass`
+- **Database**: SQLite (surveillance.db)
+
+### 📊 Available Commands
+
+#### Start Surveillance Help
+```bash
+python start_surveillance.py --help
+```
+
+#### PCAP Parser Help
+```bash
+python pcap_parser.py
+# Shows: analyze, replay commands with examples
+```
 
 ## Overview
 
 This is a surveillance Common Operating Picture (COP) dashboard built with Flask and Socket.IO for real-time monitoring of aircraft, vessels, and vehicle tracks. The application processes ASTERIX surveillance data and provides data conversion capabilities for military and emergency response formats including CoT (Cursor-on-Target) XML and KLV (Key-Length-Value) metadata.
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+#### Port Already in Use
+```bash
+# Kill existing Python processes
+taskkill /f /im python.exe
+
+# Or use different port
+python start_surveillance.py --pcap cat48-only-plot-capture.pcap --pcap-port 8081
+```
+
+#### Import Errors
+```bash
+# Test system integration
+python test_main_integration.py
+
+# If Flask dependencies missing, install them
+pip install flask flask-socketio flask-sqlalchemy
+```
+
+#### No Data Appearing
+1. Check UDP receiver is running (should show in startup logs)
+2. Verify PCAP replay is sending data (check terminal output)
+3. Ensure ports match (default: 8080)
+4. Check web browser console for WebSocket errors
+
+#### Database Issues
+```bash
+# Delete database and restart (will recreate)
+del surveillance.db
+python main.py
+```
+
+### File Structure
+```
+├── main.py                    # 🚀 Main application entry point
+├── start_surveillance.py      # 🎯 Enhanced startup with PCAP replay
+├── app.py                     # Flask application setup
+├── udp_receiver.py           # UDP ASTERIX receiver
+├── pcap_parser.py            # PCAP file parser and replay
+├── models.py                 # Database models
+├── routes.py                 # Web routes and API endpoints
+├── templates/                # Web interface templates
+├── static/                   # CSS, JS, and other static files
+├── cat48-only-plot-capture.pcap # Sample PCAP file
+├── QUICKSTART.md             # Detailed quick start guide
+└── README.md                 # This file
+```
 
 ## User Preferences
 
@@ -35,9 +174,13 @@ Preferred communication style: Simple, everyday language.
 - **NetworkConfig**: Configuration management for network protocols and endpoints
 
 ### Data Processors
-- **AsterixProcessor**: Simulates processing of EUROCONTROL surveillance data exchange format
+- **AsterixConverter**: Multi-category ASTERIX processor with specialized handlers for:
+  - CAT-10: Surface Movement Data
+  - CAT-21: ADS-B Target Reports  
+  - CAT-48: Monoradar Target Reports
 - **CoTConverter**: Military standard XML format converter for situational awareness
 - **KLVConverter**: MISB standard metadata processor for UAS and VMTi data
+- **ADSBCoTConverter**: Specialized ADSB to CoT converter for aviation surveillance
 
 ### Web Interface
 - **Dashboard**: Real-time map display with track visualization and filtering
@@ -92,6 +235,10 @@ Preferred communication style: Simple, everyday language.
 - Modular data processors can be deployed as separate services
 
 ## Recent Updates (July 2025)
+- **Single Command Startup**: Complete system now runs with simple `python main.py` command
+- **PCAP Integration**: Automated PCAP replay with `start_surveillance.py --pcap <file>` for instant demos
+- **Circular Import Fix**: Resolved Flask app initialization issues for reliable startup
+- **Enhanced UDP Receiver**: Improved error handling and standalone testing capabilities
 - **Database Migration**: Upgraded from SQLite to PostgreSQL for better performance and concurrent access
 - **Live Updates**: Implemented continuous track updates every second for real-time surveillance
 - **Battle View 3D**: Fixed altitude positioning with realistic defaults (Aircraft: 10,000ft, Vessels: sea level, Vehicles: 100ft)

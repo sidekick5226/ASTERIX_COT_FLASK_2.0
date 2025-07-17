@@ -142,20 +142,39 @@ class TrackIntegrator:
         
         for event in events:
             try:
+                # Get latitude and longitude from event (from joined track data)
+                latitude = getattr(event, 'latitude', 0.0)
+                longitude = getattr(event, 'longitude', 0.0)
+                
                 # Calculate range and azimuth from lat/lon
-                range_m, azimuth_deg = self._calculate_range_azimuth(event.latitude, event.longitude)
+                range_m, azimuth_deg = self._calculate_range_azimuth(latitude, longitude)
+                
+                # Determine proper track type
+                raw_track_type = getattr(event, 'track_type', 'unknown')
+                normalized_track_type = self._determine_track_type(raw_track_type, getattr(event, 'track_id', ''))
+                
+                # Get altitude from event (which comes from joined track data)
+                altitude = getattr(event, 'altitude', None)
+                if altitude is not None and altitude > 0:
+                    altitude = float(altitude)
+                else:
+                    altitude = None
                 
                 plot = PlotData(
                     timestamp=event.timestamp,
                     range_m=range_m,
                     azimuth_deg=azimuth_deg,
                     elevation_deg=0.0,  # Not available in current data
-                    latitude=event.latitude,
-                    longitude=event.longitude,
+                    latitude=latitude,
+                    longitude=longitude,
+                    altitude=altitude,  # Include altitude from track
                     rcs=0.0,  # Not available in current data
                     plot_id=f"event_{event.id}",
-                    quality=1.0  # Default quality
+                    quality=1.0,  # Default quality
+                    track_type=normalized_track_type.title(),  # Capitalize first letter
+                    original_track_id=getattr(event, 'track_id', '')
                 )
+                
                 plots.append(plot)
                 
             except Exception as e:
@@ -223,17 +242,21 @@ class TrackIntegrator:
                     # Convert to lat/lon
                     lat, lon = self.tracker._cartesian_to_latlon(latest_pos[0], latest_pos[1])
                     
-                    # Update or insert track
+                    # Use altitude from track data (from most recent plot)
+                    altitude = track_data.altitude
+                    
+                    # Update or insert track - use calculated altitude
                     cursor.execute("""
                         INSERT OR REPLACE INTO tracks (
-                            track_id, latitude, longitude, speed_ms, heading_deg,
+                            track_id, latitude, longitude, altitude, speed_ms, heading_deg,
                             last_seen, created_at, plot_count, quality_score,
                             state, velocity_x, velocity_y
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, (
                         track_id,
                         lat,
                         lon,
+                        altitude,  # Use altitude from track data
                         track_data.speed_ms,
                         track_data.heading_deg,
                         track_data.last_update.isoformat(),
@@ -252,10 +275,13 @@ class TrackIntegrator:
             logger.error(f"Error updating database tracks: {e}")
     
     
-    def get_current_tracks(self) -> List[Dict]:
+    def get_current_tracks(self, app=None) -> List[Dict]:
         """
         Get current tracks for display
         
+        Args:
+            app: Flask app instance for database access (not used anymore)
+            
         Returns:
             List of track dictionaries
         """
@@ -309,14 +335,15 @@ class TrackIntegrator:
             if track_id.startswith('ADS-B'):
                 return 'aircraft'
             elif track_id.startswith('RADAR'):
-                return 'radar_target'
+                return 'aircraft'  # Most radar tracks are aircraft
             elif track_id.startswith('MLAT'):
-                return 'multilateration'
+                return 'aircraft'  # Multilateration usually aircraft
             elif any(char.isalpha() for char in track_id):
                 # If contains letters, likely an aircraft callsign
                 return 'aircraft'
             else:
-                return 'unknown'
+                # Default to aircraft for surveillance radar
+                return 'aircraft'
         
         # Normalize existing track types
         track_type_lower = track_type.lower()
@@ -330,11 +357,11 @@ class TrackIntegrator:
         elif track_type_lower in ['ship', 'boat', 'vessel']:
             return 'marine'
         elif track_type_lower in ['radar', 'primary']:
-            return 'radar_target'
+            return 'aircraft'  # Primary radar tracks are usually aircraft
         elif track_type_lower in ['ads-b', 'adsb']:
             return 'aircraft'
         else:
-            return track_type_lower
+            return 'aircraft'  # Default to aircraft for unknown types
 
 
     def _process_existing_data(self):
@@ -383,7 +410,8 @@ class TrackIntegrator:
                             rcs=0.0,
                             plot_id=track_id,
                             quality=1.0,
-                            track_type=self._determine_track_type(track_type, track_id)
+                            track_type=self._determine_track_type(track_type, track_id),
+                            original_track_id=track_id  # Set the original track ID
                         )
                         plots.append(plot)
                         
@@ -425,6 +453,7 @@ def create_database_schema():
                     track_id TEXT UNIQUE NOT NULL,
                     latitude REAL NOT NULL,
                     longitude REAL NOT NULL,
+                    altitude REAL DEFAULT NULL,
                     speed_ms REAL DEFAULT 0,
                     heading_deg REAL DEFAULT 0,
                     last_seen TEXT NOT NULL,
@@ -436,6 +465,13 @@ def create_database_schema():
                     velocity_y REAL DEFAULT 0
                 )
             """)
+            
+            # Add altitude column if it doesn't exist (for existing databases)
+            try:
+                cursor.execute("ALTER TABLE tracks ADD COLUMN altitude REAL DEFAULT NULL")
+            except sqlite3.OperationalError:
+                # Column already exists, ignore
+                pass
             
             # Add indexes for performance
             cursor.execute("""

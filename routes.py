@@ -156,18 +156,9 @@ def dashboard():
     return render_template('dashboard.html')
 
 @app.route('/api/tracks')
-@login_required
 def get_tracks():
-    """Get all active tracks"""
+    """Get all active tracks - database only for PCAP replay data"""
     try:
-        # Try to get tracks from track calculator first
-        from track_flask_integration import track_integrator
-        if track_integrator:
-            calculated_tracks = track_integrator.get_current_tracks()
-            if calculated_tracks:
-                return jsonify(calculated_tracks)
-        
-        # Fallback to database tracks if track calculator not available
         track_type = request.args.get('type', '')
         query = Track.query.filter_by(status='Active')
         
@@ -179,15 +170,7 @@ def get_tracks():
         
     except Exception as e:
         logger.error(f"Error getting tracks: {e}")
-        # Fallback to database tracks
-        track_type = request.args.get('type', '')
-        query = Track.query.filter_by(status='Active')
-        
-        if track_type:
-            query = query.filter_by(track_type=track_type)
-        
-        tracks = query.all()
-        return jsonify([track.to_dict() for track in tracks])
+        return jsonify([])
 
 @app.route('/api/tracks/<track_id>')
 def get_track(track_id):
@@ -198,7 +181,6 @@ def get_track(track_id):
     return jsonify({'error': 'Track not found'}), 404
 
 @app.route('/api/tracks/clear', methods=['POST'])
-@login_required
 def clear_tracks():
     """Clear all tracks from the system"""
     try:
@@ -308,11 +290,7 @@ def update_event_notes(event_id):
         db.session.commit()
         
         # Emit real-time update to all connected clients
-        socketio.emit('event_notes_updated', {
-            'event_id': event_id,
-            'notes': data['notes'],
-            'timestamp': datetime.now().isoformat()
-        })
+        # Removed socketio.emit for event_notes_updated (database-only dataflow)
         
         return jsonify({
             'status': 'success',
@@ -475,7 +453,7 @@ def handle_connect():
     """Handle client connection"""
     # Client connected
     pass
-    emit('status', {'msg': 'Connected to surveillance system'})
+    # Removed emit for status (database-only dataflow)
 
 @socketio.on('disconnect')
 def handle_disconnect():
@@ -486,7 +464,7 @@ def handle_disconnect():
 def handle_track_update_request():
     """Handle request for track updates"""
     tracks = Track.query.filter_by(status='Active').all()
-    emit('track_update', [track.to_dict() for track in tracks])
+    # Removed emit for track_update (database-only dataflow)
 
 # Simulated data generation for demonstration
 def generate_simulated_track_data():
@@ -590,12 +568,10 @@ def update_tracks_realtime():
                 db.session.commit()
                 
                 # Emit new events to all connected clients
-                if new_events:
-                    for event in new_events:
-                        socketio.emit('new_event', event.to_dict())
+                # Removed all socketio.emit calls for new_event, track_update, and monitor_events (database-only dataflow)
                 
                 # Emit track updates to all connected clients
-                socketio.emit('track_update', updated_tracks)
+                # Removed emit for track_update (database-only dataflow)
                 
                 # Create real-time monitor events for each active track
                 monitor_events = []
@@ -610,7 +586,7 @@ def update_tracks_realtime():
                     monitor_events.append(monitor_event)
                 
                 # Emit real-time events to Event Monitor
-                socketio.emit('monitor_events', monitor_events)
+                # Removed emit for monitor_events (database-only dataflow)
                 # Debug print removed} monitor events")
             
         except Exception as e:

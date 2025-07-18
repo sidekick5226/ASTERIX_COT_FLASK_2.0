@@ -81,39 +81,56 @@ class SurveillanceDashboard {
 
     bindEvents() {
         // Control buttons
-        document.getElementById('start-demo-btn').addEventListener('click', () => this.startLiveDemo());
-        document.getElementById('stop-demo-btn').addEventListener('click', () => this.stopLiveDemo());
-        document.getElementById('battle-mode-btn').addEventListener('click', () => this.toggleBattleMode());
-
-        // Add advanced 3D mode with double-click
-        document.getElementById('battle-mode-btn').addEventListener('dblclick', () => this.toggleAdvanced3DMode());
+        const startDemoBtn = document.getElementById('start-demo-btn');
+        if (startDemoBtn) startDemoBtn.addEventListener('click', () => this.startLiveDemo());
+        const stopDemoBtn = document.getElementById('stop-demo-btn');
+        if (stopDemoBtn) stopDemoBtn.addEventListener('click', () => this.stopLiveDemo());
+        const battleModeBtn = document.getElementById('battle-mode-btn');
+        if (battleModeBtn) {
+            battleModeBtn.addEventListener('click', () => this.toggleBattleMode());
+            battleModeBtn.addEventListener('dblclick', () => this.toggleAdvanced3DMode());
+        }
 
         // Filters
-        document.getElementById('track-type-filter').addEventListener('change', (e) => this.filterTracks(e.target.value));
-        document.getElementById('search-input').addEventListener('input', (e) => this.searchTracks(e.target.value));
+        const trackTypeFilter = document.getElementById('track-type-filter');
+        if (trackTypeFilter) trackTypeFilter.addEventListener('change', (e) => this.filterTracks(e.target.value));
+        const searchInput = document.getElementById('search-input');
+        if (searchInput) searchInput.addEventListener('input', (e) => this.searchTracks(e.target.value));
 
         // Event handlers
-        document.getElementById('refresh-events-btn').addEventListener('click', () => this.refreshEvents());
-        document.getElementById('clear-filters-btn').addEventListener('click', () => this.clearEventLogFilters());
-        document.getElementById('export-log-btn').addEventListener('click', () => this.exportEventLog());
+        const refreshEventsBtn = document.getElementById('refresh-events-btn');
+        if (refreshEventsBtn) refreshEventsBtn.addEventListener('click', () => this.refreshEvents());
+        const clearFiltersBtn = document.getElementById('clear-filters-btn');
+        if (clearFiltersBtn) clearFiltersBtn.addEventListener('click', () => this.clearEventLogFilters());
+        const exportLogBtn = document.getElementById('export-log-btn');
+        if (exportLogBtn) exportLogBtn.addEventListener('click', () => this.exportEventLog());
 
         // Event Log filter handlers - automatic filtering on change
-        document.getElementById('start-date').addEventListener('change', () => this.filterEventLog());
-        document.getElementById('end-date').addEventListener('change', () => this.filterEventLog());
-        document.getElementById('event-type-filter').addEventListener('change', () => this.filterEventLog());
+        const startDate = document.getElementById('start-date');
+        if (startDate) startDate.addEventListener('change', () => this.filterEventLog());
+        const endDate = document.getElementById('end-date');
+        if (endDate) endDate.addEventListener('change', () => this.filterEventLog());
+        const eventTypeFilter = document.getElementById('event-type-filter');
+        if (eventTypeFilter) eventTypeFilter.addEventListener('change', () => this.filterEventLog());
 
         // Event Monitor filter handlers - automatic filtering on change
-        document.getElementById('monitor-event-type-filter').addEventListener('change', () => this.applyMonitorFilters());
-        document.getElementById('monitor-track-type-filter').addEventListener('change', () => this.applyMonitorFilters());
-        
+        const monitorEventTypeFilter = document.getElementById('monitor-event-type-filter');
+        if (monitorEventTypeFilter) monitorEventTypeFilter.addEventListener('change', () => this.applyMonitorFilters());
+        const monitorTrackTypeFilter = document.getElementById('monitor-track-type-filter');
+        if (monitorTrackTypeFilter) monitorTrackTypeFilter.addEventListener('change', () => this.applyMonitorFilters());
+
         // Add debounced input for track ID filter
         let trackFilterTimeout;
-        document.getElementById('monitor-track-filter').addEventListener('input', () => {
-            clearTimeout(trackFilterTimeout);
-            trackFilterTimeout = setTimeout(() => this.applyMonitorFilters(), 300);
-        });
-        
-        document.getElementById('clear-monitor-filters-btn').addEventListener('click', () => this.clearMonitorFilters());
+        const monitorTrackFilter = document.getElementById('monitor-track-filter');
+        if (monitorTrackFilter) {
+            monitorTrackFilter.addEventListener('input', () => {
+                clearTimeout(trackFilterTimeout);
+                trackFilterTimeout = setTimeout(() => this.applyMonitorFilters(), 300);
+            });
+        }
+
+        const clearMonitorFiltersBtn = document.getElementById('clear-monitor-filters-btn');
+        if (clearMonitorFiltersBtn) clearMonitorFiltersBtn.addEventListener('click', () => this.clearMonitorFilters());
 
         // Network configuration
         this.bindNetworkConfigEvents();
@@ -172,14 +189,14 @@ class SurveillanceDashboard {
             }
 
             const tracks = await response.json();
-
+            console.log('Tracks received from API:', tracks);
             this.tracks.clear();
             tracks.forEach(track => {
+                console.log('Processing track:', track);
                 this.tracks.set(track.track_id, track);
             });
-            
+            console.log('Total tracks processed:', this.tracks.size);
             this.updateTracksDisplay();
-
             // Update the map with current filters
             this.updateMapWithCurrentFilters();
             

@@ -72,6 +72,13 @@ class Event(db.Model):
     user_notes = db.Column(db.Text)  # User-editable notes/details
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # ASTERIX plot data fields
+    latitude = db.Column(db.Float)
+    longitude = db.Column(db.Float)
+    altitude = db.Column(db.Float)
+    speed = db.Column(db.Float)
+    heading = db.Column(db.Float)
+    
     def to_dict(self):
         return {
             'id': self.id,
@@ -79,7 +86,12 @@ class Event(db.Model):
             'event_type': self.event_type,
             'description': self.description,
             'user_notes': self.user_notes,
-            'timestamp': self.timestamp.isoformat() if self.timestamp else None
+            'timestamp': self.timestamp.isoformat() if self.timestamp else None,
+            'latitude': self.latitude,
+            'longitude': self.longitude,
+            'altitude': self.altitude,
+            'speed': self.speed,
+            'heading': self.heading
         }
 
 class NetworkConfig(db.Model):

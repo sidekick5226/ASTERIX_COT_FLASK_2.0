@@ -96,12 +96,11 @@ class TrackIntegrator:
                 
                 # Get events newer than last processed
                 cursor.execute("""
-                    SELECT e.id, e.timestamp, e.track_id, t.latitude, t.longitude, 
-                           t.altitude, t.speed, t.heading, t.callsign, t.track_type
-                    FROM event e
-                    LEFT JOIN track t ON e.track_id = t.track_id
-                    WHERE e.id > ? 
-                    ORDER BY e.timestamp ASC
+                    SELECT id, timestamp, track_id, latitude, longitude, 
+                           altitude, speed, heading, event_type
+                    FROM event
+                    WHERE id > ? AND event_type = 'asterix_plot'
+                    ORDER BY timestamp ASC
                 """, (self.last_processed_id,))
                 
                 events = []
@@ -116,8 +115,7 @@ class TrackIntegrator:
                         'altitude': row[5] or 0.0,
                         'speed_ms': row[6] or 0.0,
                         'heading_deg': row[7] or 0.0,
-                        'callsign': row[8] or '',
-                        'track_type': row[9] or 'unknown'
+                        'event_type': row[8] or 'asterix_plot'
                     }
                     events.append(type('Event', (), event_data)())
                 
@@ -225,24 +223,21 @@ class TrackIntegrator:
                     
                     # Update or insert track
                     cursor.execute("""
-                        INSERT OR REPLACE INTO tracks (
-                            track_id, latitude, longitude, speed_ms, heading_deg,
-                            last_seen, created_at, plot_count, quality_score,
-                            state, velocity_x, velocity_y
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        INSERT OR REPLACE INTO track (
+                            track_id, latitude, longitude, speed, heading,
+                            last_updated, created_at, track_type, status, callsign
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, (
                         track_id,
                         lat,
                         lon,
-                        track_data.speed_ms,
+                        track_data.speed_ms * 1.94384,  # Convert m/s to knots
                         track_data.heading_deg,
                         track_data.last_update.isoformat(),
                         track_data.created_time.isoformat(),
-                        track_data.plot_count,
-                        track_data.quality_score,
-                        track_data.state.value,
-                        track_data.velocity_x,
-                        track_data.velocity_y
+                        'Aircraft',  # Default track type
+                        'Active',    # Default status
+                        track_id     # Use track_id as callsign for now
                     ))
                 
                 conn.commit()

@@ -1,155 +1,233 @@
-"""
-UDP Receiver for ASTERIX CAT-48 Data
-Receives ASTERIX data from Colasoft Packet Player and processes it through the surveillance system.
-"""
+
 
 import socket
 import threading
-import time
-import struct
-from datetime import datetime, timezone
-from typing import Dict, List, Any, Optional
-from asterix_cat48 import AsterixCAT48Processor
 import logging
+from datetime import datetime, timezone
+from typing import List, Dict, Any
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+try:
+    from app_init import app, db, Event
+except ImportError:
+    app = None
+    db = None
+    Event = None
+
+try:
+    from asterix_cat48 import AsterixCAT48Processor
+except ImportError:
+    AsterixCAT48Processor = None
+
+logger = logging.getLogger("udp_receiver")
+logging.basicConfig(level=logging.INFO)
 
 class UDPAsterixReceiver:
-    """
-    UDP receiver for ASTERIX CAT-48 data from Colasoft Packet Player.
-    """
-    
-    def __init__(self, host='0.0.0.0', port=8080, app=None, db=None, socketio=None, Track=None, Event=None):
-        """
-        Initialize UDP receiver.
-        
-        Args:
-            host: IP address to bind to (default: all interfaces)
-            port: Port to listen on (default: 8080)
-            app: Flask app instance (optional)
-            db: SQLAlchemy database instance (optional)
-            socketio: SocketIO instance (optional)
-            Track: Track model class (optional)
-            Event: Event model class (optional)
-        """
+    def __init__(self, host="0.0.0.0", port=8080):
         self.host = host
         self.port = port
-        self.socket = None
         self.running = False
-        self.receive_thread = None
-        self.processor = AsterixCAT48Processor()
-        
-        # Flask dependencies (optional)
-        self.app = app
-        self.db = db
-        self.socketio = socketio
-        self.Track = Track
-        self.Event = Event
-        
-        # Statistics
-        self.stats = {
-            'messages_received': 0,
-            'messages_processed': 0,
-            'tracks_updated': 0,
-            'errors': 0,
-            'start_time': None,
-            'last_message_time': None
-        }
-        
-        # Track cache for performance
-        self.track_cache = {}
-        
+        self.socket = None
+        self.processor = AsterixCAT48Processor() if AsterixCAT48Processor else None
+        self.stats = {"messages_received": 0, "messages_processed": 0, "errors": 0}
+        logger.info(f"UDPAsterixReceiver initialized on {self.host}:{self.port}")
+
     def start(self):
-        """Start the UDP receiver."""
-        try:
-            # Create UDP socket
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            self.socket.bind((self.host, self.port))
-            self.socket.settimeout(1.0)  # 1 second timeout for clean shutdown
-            
-            self.running = True
-            self.stats['start_time'] = datetime.now(timezone.utc)
-            
-            # Start receive thread
-            self.receive_thread = threading.Thread(target=self._receive_loop, daemon=True)
-            self.receive_thread.start()
-            
-            logger.info(f"UDP ASTERIX receiver started on {self.host}:{self.port}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Failed to start UDP receiver: {e}")
-            return False
-    
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.socket.bind((self.host, self.port))
+        self.running = True
+        threading.Thread(target=self._receive_loop, daemon=True).start()
+        logger.info(f"UDP receiver started on {self.host}:{self.port}")
+
     def stop(self):
-        """Stop the UDP receiver."""
-        try:
-            self.running = False
-            
-            if self.socket:
-                self.socket.close()
-                self.socket = None
-            
-            if self.receive_thread and self.receive_thread.is_alive():
-                self.receive_thread.join(timeout=5)
-            
-            logger.info("UDP ASTERIX receiver stopped")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error stopping UDP receiver: {e}")
-            return False
-    
+        self.running = False
+        if self.socket:
+            self.socket.close()
+        logger.info("UDP receiver stopped.")
+
     def _receive_loop(self):
-        """Main receive loop for UDP data."""
-        buffer_size = 65536  # 64KB buffer
-        
-        logger.info(f"UDP receiver listening on {self.host}:{self.port}")
-        logger.info("Waiting for ASTERIX data...")
-        
+        buffer_size = 65536
         while self.running:
             try:
-                # Check if socket is still valid
-                if not self.socket:
-                    logger.error("Socket is None, stopping receive loop")
-                    break
-                
-                # Receive UDP data
                 data, addr = self.socket.recvfrom(buffer_size)
-                
-                if not data:
-                    continue
-                
                 logger.info(f"Received {len(data)} bytes from {addr}")
-                logger.debug(f"Raw data: {data[:50].hex()}")  # First 50 bytes in hex
-                
-                self.stats['messages_received'] += 1
-                self.stats['last_message_time'] = datetime.now(timezone.utc)
+                self.stats["messages_received"] += 1
+                self._process_asterix_data(data, addr)
+            except Exception as e:
+                logger.error(f"Error in receive loop: {e}")
+                self.stats["errors"] += 1
+
+    def _process_asterix_data(self, data: bytes, addr: tuple):
+        if not data or len(data) < 3:
+            logger.warning(f"Received too short message from {addr}: {len(data)} bytes")
+            return
+        category = data[0]
+        if category == 48 and self.processor:
+            try:
+                targets = self.processor.process_cat48_message(data)
+                logger.info(f"CAT-48 targets extracted: {targets}")
+                if targets:
+                    logger.info(f"Processed {len(targets)} CAT-48 plots from {addr}")
+                    self._save_plots_to_db(targets)
+                    self.stats["messages_processed"] += 1
+                else:
+                    logger.warning(f"No plots extracted from CAT-48 message from {addr}")
+            except Exception as e:
+                logger.error(f"Error processing CAT-48 data: {e}")
+        else:
+            logger.warning(f"Received unknown ASTERIX category {category} from {addr}")
+
+    def _save_plots_to_db(self, plots: List[Dict[str, Any]]):
+        if not (Event and app and db):
+            logger.warning("Cannot save events - Flask dependencies not available")
+            return
+        for plot in plots:
+            if plot.get("latitude") and plot.get("longitude"):
+                try:
+                    with app.app_context():
+                        event = Event()
+                        event.timestamp = datetime.now(timezone.utc)
+                        event.track_id = plot.get("track_id", f"plot_{int(datetime.now().timestamp() * 1000000)}")
+                        event.latitude = plot["latitude"]
+                        event.longitude = plot["longitude"]
+                        event.altitude = plot.get("altitude", 0)
+                        event.speed = plot.get("speed", 0)
+                        event.heading = plot.get("heading", 0)
+                        event.event_type = "asterix_plot"
+                        event.description = "ASTERIX CAT-48 plot from UDP receiver"
+                        db.session.add(event)
+                        db.session.commit()
+                        logger.info(f"Added ASTERIX plot event for track integrator: {event.track_id}")
+                except Exception as e:
+                    logger.error(f"Error saving event to DB: {e}")
+                    db.session.rollback()
+
+udp_receiver_instance = None
+
+def start_udp_receiver(host="0.0.0.0", port=8080):
+    global udp_receiver_instance
+    if udp_receiver_instance is None:
+        udp_receiver_instance = UDPAsterixReceiver(host, port)
+        udp_receiver_instance.start()
+    return udp_receiver_instance
+import socket
+import threading
+import logging
+from datetime import datetime, timezone
+from typing import List, Dict, Any
+
+try:
+    from app_init import app, db, Event
+except ImportError:
+    app = None
+    db = None
+    Event = None
+
+try:
+    from asterix_cat48 import AsterixCAT48Processor
+except ImportError:
+    AsterixCAT48Processor = None
+
+logger = logging.getLogger("udp_receiver")
+logging.basicConfig(level=logging.INFO)
+
+class UDPAsterixReceiver:
+    def __init__(self, host="0.0.0.0", port=8080):
+        self.host = host
+        self.port = port
+        self.running = False
+        self.socket = None
+        self.processor = AsterixCAT48Processor() if AsterixCAT48Processor else None
+        self.stats = {"messages_received": 0, "messages_processed": 0, "errors": 0}
+        logger.info(f"UDPAsterixReceiver initialized on {self.host}:{self.port}")
+
+    def start(self):
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.socket.bind((self.host, self.port))
+        self.running = True
+        threading.Thread(target=self._receive_loop, daemon=True).start()
+        logger.info(f"UDP receiver started on {self.host}:{self.port}")
+
+    def stop(self):
+        self.running = False
+        if self.socket:
+            self.socket.close()
+        logger.info("UDP receiver stopped.")
+
+    def _receive_loop(self):
+        buffer_size = 65536
+        while self.running:
+            try:
+                data, addr = self.socket.recvfrom(buffer_size)
+                logger.info(f"Received {len(data)} bytes from {addr}")
+                self.stats["messages_received"] += 1
+                self._process_asterix_data(data, addr)
+            except Exception as e:
+                logger.error(f"Error in receive loop: {e}")
+                self.stats["errors"] += 1
+
+    def _process_asterix_data(self, data: bytes, addr: tuple):
+        if not data or len(data) < 3:
+            logger.warning(f"Received too short message from {addr}: {len(data)} bytes")
+            return
+        category = data[0]
+        if category == 48 and self.processor:
+            try:
+                targets = self.processor.process_cat48_message(data)
+                logger.info(f"CAT-48 targets extracted: {targets}")
+                if targets:
+                    logger.info(f"Processed {len(targets)} CAT-48 plots from {addr}")
+                    self._save_plots_to_db(targets)
+                    self.stats["messages_processed"] += 1
+                else:
+                    logger.warning(f"No plots extracted from CAT-48 message from {addr}")
+            except Exception as e:
+                logger.error(f"Error processing CAT-48 data: {e}")
+        else:
+            logger.warning(f"Received unknown ASTERIX category {category} from {addr}")
+
+    def _save_plots_to_db(self, plots: List[Dict[str, Any]]):
+        if not (Event and app and db):
+            logger.warning("Cannot save events - Flask dependencies not available")
+            return
+        for plot in plots:
+            if plot.get("latitude") and plot.get("longitude"):
+                try:
+                    with app.app_context():
+                        event = Event()
+                        event.timestamp = datetime.now(timezone.utc)
+                        event.track_id = plot.get("track_id", f"plot_{int(datetime.now().timestamp() * 1000000)}")
+                        event.latitude = plot["latitude"]
+                        event.longitude = plot["longitude"]
+                        event.altitude = plot.get("altitude", 0)
+                        event.speed = plot.get("speed", 0)
+                        event.heading = plot.get("heading", 0)
+                        event.event_type = "asterix_plot"
+                        event.description = "ASTERIX CAT-48 plot from UDP receiver"
+                        db.session.add(event)
+                        db.session.commit()
+                        logger.info(f"Added ASTERIX plot event for track integrator: {event.track_id}")
+                except Exception as e:
+                    logger.error(f"Error saving event to DB: {e}")
+                    db.session.rollback()
+
+udp_receiver_instance = None
+
+def start_udp_receiver(host="0.0.0.0", port=8080):
+    global udp_receiver_instance
+    if udp_receiver_instance is None:
+        udp_receiver_instance = UDPAsterixReceiver(host, port)
+        udp_receiver_instance.start()
+    return udp_receiver_instance
                 
                 # Process ASTERIX data
                 self._process_asterix_data(data, addr)
                 
-            except socket.timeout:
-                continue  # Normal timeout, continue loop
-            except OSError as e:
-                if self.running:
-                    logger.warning(f"Socket/OS error: {e}")
-                    # Check if socket is still valid
-                    if not self.socket:
-                        logger.error("Socket became None during operation")
-                        break
-                    time.sleep(0.1)
-            except Exception as e:
-                logger.error(f"Unexpected error in receive loop: {e}")
-                self.stats['errors'] += 1
-                time.sleep(0.1)
     
     def _process_asterix_data(self, data: bytes, addr: tuple):
         """
-        Process received ASTERIX data.
+        Process received ASTERIX data through track calculator.
         
         Args:
             data: Raw ASTERIX data
@@ -166,39 +244,82 @@ class UDPAsterixReceiver:
             
             # Process based on category
             if category == 48:
-                # Use specialized CAT-48 processor
+                # Use specialized CAT-48 processor to extract plot data
                 targets = self.processor.process_cat48_message(data)
                 
                 if targets:
-                    logger.info(f"Processed {len(targets)} CAT-48 targets from {addr}")
-                    
-                    # Debug: Log the first target's data
-                    if targets and logger.isEnabledFor(logging.DEBUG):
-                        first_target = targets[0]
-                        logger.debug(f"First target data: {first_target}")
-                        logger.debug(f"  Track ID: {first_target.get('track_id')}")
-                        logger.debug(f"  Coordinates: lat={first_target.get('latitude')}, lon={first_target.get('longitude')}")
-                        logger.debug(f"  Data items: {first_target.get('data_items', {})}")
-                    
-                    self._update_tracks(targets)
+                    logger.info(f"Processed {len(targets)} CAT-48 plots from {addr}")
+                    print(f"UDPReceiver: CAT-48 targets extracted: {targets}")
+                    # Send plot data to track calculator instead of directly to database
+                    self._send_plots_to_track_calculator(targets)
                     self.stats['messages_processed'] += 1
                 else:
-                    logger.warning(f"No targets extracted from CAT-48 message from {addr}")
-                    logger.debug(f"Raw message data: {data.hex()}")
-                    
-                    # Try to extract basic info for debugging
-                    if len(data) >= 3:
-                        category = data[0]
-                        length = struct.unpack('>H', data[1:3])[0]
-                        logger.debug(f"Message: category={category}, length={length}, actual_length={len(data)}")
+                    logger.warning(f"No plots extracted from CAT-48 message from {addr}")
                     
             else:
                 # Log unknown category
                 logger.warning(f"Received unknown ASTERIX category {category} from {addr}")
                 
+                    print(f"UDPReceiver: No plots extracted from CAT-48 message from {addr}")
         except Exception as e:
             logger.error(f"Error processing ASTERIX data from {addr}: {e}")
             self.stats['errors'] += 1
+    
+    def _send_plots_to_track_calculator(self, plots: List[Dict[str, Any]]):
+        """
+        Send plot data to the central track integrator for processing.
+        
+        Args:
+            plots: List of plot dictionaries from ASTERIX processor
+        """
+        try:
+            # Get the global track integrator instance
+            from track_flask_integration import track_integrator
+            
+            if not track_integrator:
+                logger.error("Track integrator not available")
+                self._update_tracks(plots)
+                return
+            
+            # Convert ASTERIX plots to database events that track integrator can process
+            for plot in plots:
+                if plot.get('latitude') and plot.get('longitude'):
+                    # Create event record that will be picked up by track integrator
+                    if self.Event and self.app and self.db:
+                        try:
+                            with self.app.app_context():
+                                event = self.Event()
+                                event.timestamp = datetime.now(timezone.utc)
+                                event.track_id = plot.get('track_id', f"plot_{int(datetime.now().timestamp() * 1000000)}")
+                                event.latitude = plot['latitude']
+                                event.longitude = plot['longitude']
+                                event.altitude = plot.get('altitude', 0)
+                                event.speed = plot.get('speed', 0)
+                                event.heading = plot.get('heading', 0)
+                                event.event_type = 'asterix_plot'
+                                event.description = f"ASTERIX CAT-48 plot from UDP receiver"
+                                self.db.session.add(event)
+                                self.db.session.commit()
+                                
+                                logger.debug(f"Added ASTERIX plot event for track integrator: {event.track_id}")
+                        except Exception as e:
+                            logger.error(f"Error creating event for track integrator: {e}")
+                            if self.db:
+                                self.db.session.rollback()
+                                print(f"UDPReceiver: Added ASTERIX plot event for track integrator: {event.track_id}")
+                    else:
+                        logger.warning("Cannot create events - Flask dependencies not available")
+            
+            # Update statistics
+            self.stats['tracks_updated'] += len(plots)
+            logger.info(f"Sent {len(plots)} ASTERIX plots to track integrator via database events")
+                
+        except Exception as e:
+            logger.error(f"Error sending plots to track integrator: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            # Fallback to direct database update if track integrator fails
+            self._update_tracks(plots)
     
     def _update_tracks(self, targets: List[Dict[str, Any]]):
         """
@@ -256,18 +377,18 @@ class UDPAsterixReceiver:
                     else:
                         logger.debug(f"Updating existing track {target_id}")
                     
-                    # Update track attributes with safe defaults
-                    track.callsign = target.get('callsign') or track.callsign
-                    track.track_type = self._determine_track_type(target) or track.track_type
-                    
-                    # Update coordinates with safe defaults
-                    if target.get('latitude') is not None:
-                        track.latitude = target.get('latitude')
-                    if target.get('longitude') is not None:
-                        track.longitude = target.get('longitude')
-                    
-                    # Update other optional fields with safe type checking
-                    altitude = target.get('altitude')
+            if category == 48:
+                # Use specialized CAT-48 processor to extract plot data
+                targets = self.processor.process_cat48_message(data)
+                print(f"UDPReceiver: CAT-48 targets extracted: {targets}")
+                if targets:
+                    logger.info(f"Processed {len(targets)} CAT-48 plots from {addr}")
+                    # Send plot data to track calculator instead of directly to database
+                    self._send_plots_to_track_calculator(targets)
+                    self.stats['messages_processed'] += 1
+                else:
+                    logger.warning(f"No plots extracted from CAT-48 message from {addr}")
+                    print(f"UDPReceiver: No plots extracted from CAT-48 message from {addr}")
                     if altitude is not None:
                         try:
                             track.altitude = float(altitude)
@@ -321,33 +442,33 @@ class UDPAsterixReceiver:
             try:
                 if self.db:
                     self.db.session.rollback()
-            except:
-                pass  # Ignore rollback errors if no session
-    
-    def _determine_track_type(self, target: Dict[str, Any]) -> str:
-        """
-        Determine track type from ASTERIX data.
-        
-        Args:
-            target: Target dictionary
-            
-        Returns:
-            Track type string
-        """
-        # Check flight status or other indicators
-        flight_status = target.get('flight_status', '')
-        if 'ground' in flight_status.lower():
-            return 'Ground Vehicle'
-        elif 'airborne' in flight_status.lower():
-            return 'Aircraft'
-        else:
-            # Safe altitude check - handle None values
-            altitude = target.get('altitude')
-            if altitude is not None and altitude > 100:
-                return 'Aircraft'
-            else:
-                return 'Unknown'
-    
+            for plot in plots:
+                print(f"UDPReceiver: Processing plot for DB: {plot}")
+                if plot.get('latitude') and plot.get('longitude'):
+                    # Create event record that will be picked up by track integrator
+                    if self.Event and self.app and self.db:
+                        try:
+                            with self.app.app_context():
+                                event = self.Event()
+                                event.timestamp = datetime.now(timezone.utc)
+                                event.track_id = plot.get('track_id', f"plot_{int(datetime.now().timestamp() * 1000000)}")
+                                event.latitude = plot['latitude']
+                                event.longitude = plot['longitude']
+                                event.altitude = plot.get('altitude', 0)
+                                event.speed = plot.get('speed', 0)
+                                event.heading = plot.get('heading', 0)
+                                event.event_type = 'asterix_plot'
+                                event.description = f"ASTERIX CAT-48 plot from UDP receiver"
+                                self.db.session.add(event)
+                                self.db.session.commit()
+                                print(f"UDPReceiver: Added ASTERIX plot event for track integrator: {event.track_id}")
+                                logger.debug(f"Added ASTERIX plot event for track integrator: {event.track_id}")
+                        except Exception as e:
+                            logger.error(f"Error creating event for track integrator: {e}")
+                            if self.db:
+                                self.db.session.rollback()
+                    else:
+                        logger.warning("Cannot create events - Flask dependencies not available")
     def get_statistics(self) -> Dict[str, Any]:
         """Get receiver statistics."""
         stats = self.stats.copy()

@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 # Global track integrator instance
 track_integrator = None
-background_thread = None
+background_thread = None  # Removed global cache usage (database-only dataflow)
 background_running = False
 
 
@@ -51,7 +51,7 @@ def background_tracking_worker():
     """
     Background worker for continuous track processing
     """
-    global track_integrator, background_running
+    global background_running
     
     logger.info("Background tracking worker started")
     
@@ -59,7 +59,8 @@ def background_tracking_worker():
         try:
             if track_integrator:
                 # Process new data
-                result = track_integrator.process_new_data()
+                # Process new data (database-only dataflow)
+                # result = track_integrator.process_new_data()
                 
                 if result['status'] == 'success' and result['processed'] > 0:
                     logger.info(f"Processed {result['processed']} plots, "
@@ -86,9 +87,7 @@ def start_background_tracking():
     background_running = True
     background_thread = threading.Thread(target=background_tracking_worker, daemon=True)
     background_thread.start()
-    
-    logger.info("Background tracking started")
-
+                # Removed result usage (database-only dataflow)
 
 def stop_background_tracking():
     """
@@ -165,11 +164,11 @@ def setup_track_calculator_routes(app):
         Manually trigger track processing
         """
         try:
-            if not track_integrator:
-                return jsonify({'error': 'Track calculator not initialized'}), 500
-            
-            result = track_integrator.process_new_data()
             return jsonify({
+                'success': True,
+                'message': 'Track processing is now database-only. No direct backend result.',
+                'timestamp': datetime.now().isoformat()
+            })
                 'success': True,
                 'result': result,
                 'timestamp': datetime.now().isoformat()

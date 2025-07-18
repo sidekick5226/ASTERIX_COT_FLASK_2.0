@@ -23,16 +23,6 @@ class UDPReceiverManager {
     }
     
     setupEventListeners() {
-        // Start UDP receiver
-        document.getElementById('start-udp-btn').addEventListener('click', () => {
-            this.startReceiver();
-        });
-        
-        // Stop UDP receiver
-        document.getElementById('stop-udp-btn').addEventListener('click', () => {
-            this.stopReceiver();
-        });
-        
         // Update configuration when network settings change
         document.getElementById('port').addEventListener('change', () => {
             this.updateConfiguration();
@@ -117,32 +107,17 @@ class UDPReceiverManager {
     }
     
     updateUI() {
-        const statusIndicator = document.getElementById('udp-status-indicator');
-        const statusText = document.getElementById('udp-status-text');
-        const startBtn = document.getElementById('start-udp-btn');
-        const stopBtn = document.getElementById('stop-udp-btn');
+        // UDP receiver runs automatically in background
+        // No UI elements to update since receiver section was removed
+        console.log(`UDP Receiver Status: ${this.status.running ? 'Running' : 'Stopped'} on ${this.status.host}:${this.status.port}`);
         
-        if (this.status.running) {
-            statusIndicator.className = 'w-2 h-2 rounded-full bg-green-500';
-            statusText.textContent = `Running on ${this.status.host}:${this.status.port}`;
-            startBtn.disabled = true;
-            startBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            stopBtn.disabled = false;
-            stopBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-        } else {
-            statusIndicator.className = 'w-2 h-2 rounded-full bg-red-500';
-            statusText.textContent = 'Stopped';
-            startBtn.disabled = false;
-            startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            stopBtn.disabled = true;
-            stopBtn.classList.add('opacity-50', 'cursor-not-allowed');
-        }
-        
-        // Update statistics
+        // Log statistics for debugging if needed
         if (this.status.statistics) {
-            document.getElementById('udp-msg-count').textContent = this.status.statistics.messages_received || 0;
-            document.getElementById('udp-track-count').textContent = this.status.statistics.tracks_updated || 0;
-            document.getElementById('udp-error-count').textContent = this.status.statistics.errors || 0;
+            console.log('UDP Stats:', {
+                messages: this.status.statistics.messages_received || 0,
+                tracks: this.status.statistics.tracks_updated || 0,
+                errors: this.status.statistics.errors || 0
+            });
         }
     }
     

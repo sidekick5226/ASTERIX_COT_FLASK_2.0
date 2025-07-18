@@ -1,18 +1,22 @@
 """
-Track Calculator for ASTERIX CAT-48 Surveillance System
-====================================================
+Track Calculator for ASTERIX CAT-48 Surveillance System with IGMM Course Modeling
+=================================================================================
 
 This module processes surveillance plot data and performs multi-target tracking
-to correlate individual plots into coherent tracks. It implements data association
-algorithms and calculates derived parameters like speed and heading.
+using IGMM (Infinite Gaussian Mixture Model) course modeling for enhanced
+plot-to-track association as described in IEEE research.
 
 Features:
-- Multi-target tracking with data association
-- Nearest neighbor and probabilistic data association
-- Kalman filtering for track prediction and smoothing
-- Speed and heading calculation from position data
-- Track initiation, maintenance, and termination
-- False alarm rejection and track quality assessment
+- IGMM-based course modeling for target tracking
+- Enhanced plot-to-track association using course prediction
+- Probabilistic association with course confidence weighting
+- Dynamic gating based on course model confidence
+- Multi-target tracking with advanced data association
+- Kalman filtering with course-aware prediction
+- Track quality assessment using course consistency
+
+Based on: "Plot-to-Track Association Using IGMM Course Modeling 
+for Target Tracking With Compact HFSWR"
 
 Author: Generated for SurveillanceSentry
 Date: 2024
@@ -26,6 +30,9 @@ from dataclasses import dataclass, field
 from enum import Enum
 import logging
 from collections import defaultdict
+
+# Import IGMM associator
+from igmm_track_associator import IGMMPlotTrackAssociator, IGMMTrackData
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -96,27 +103,39 @@ class TrackData:
 
 class TrackCalculator:
     """
-    Main track calculator class implementing multi-target tracking algorithms
+    Main track calculator class implementing IGMM-based multi-target tracking
     """
     
-    def __init__(self, config: Dict = None):
+    def __init__(self, config: Dict | None = None):
         """
-        Initialize track calculator with configuration parameters
+        Initialize track calculator with IGMM course modeling
         
         Args:
             config: Configuration dictionary with tracking parameters
         """
         self.config = config or {}
         
-        # Tracking parameters
-        self.max_association_distance = self.config.get('max_association_distance', 500.0)  # meters
+        # IGMM Association parameters
+        igmm_config = {
+            'base_association_distance': self.config.get('max_association_distance', 500.0),
+            'course_weight': self.config.get('course_weight', 0.3),
+            'position_weight': self.config.get('position_weight', 0.7),
+            'confirmation_threshold': self.config.get('track_confirmation_threshold', 3),
+            'termination_threshold': self.config.get('track_termination_threshold', 5)
+        }
+        
+        # Initialize IGMM associator
+        self.igmm_associator = IGMMPlotTrackAssociator(igmm_config)
+        
+        # Legacy tracking parameters for compatibility
+        self.max_association_distance = self.config.get('max_association_distance', 500.0)
         self.track_confirmation_threshold = self.config.get('track_confirmation_threshold', 3)
         self.track_termination_threshold = self.config.get('track_termination_threshold', 5)
         self.coasting_threshold = self.config.get('coasting_threshold', 3)
-        self.min_speed_threshold = self.config.get('min_speed_threshold', 2.0)  # m/s
-        self.max_speed_threshold = self.config.get('max_speed_threshold', 300.0)  # m/s
+        self.min_speed_threshold = self.config.get('min_speed_threshold', 2.0)
+        self.max_speed_threshold = self.config.get('max_speed_threshold', 300.0)
         
-        # Kalman filter parameters
+        # Kalman filter parameters (needed for legacy compatibility)
         self.process_noise_std = self.config.get('process_noise_std', 5.0)
         self.measurement_noise_std = self.config.get('measurement_noise_std', 10.0)
         self.time_delta = self.config.get('time_delta', 1.0)  # seconds
@@ -125,7 +144,7 @@ class TrackCalculator:
         self.radar_lat = 28.0836  # degrees
         self.radar_lon = -80.6081  # degrees
         
-        # Active tracks storage
+        # Legacy storage for compatibility
         self.active_tracks: Dict[str, TrackData] = {}
         self.terminated_tracks: Dict[str, TrackData] = {}
         
@@ -138,12 +157,12 @@ class TrackCalculator:
             'association_success_rate': 0.0
         }
         
-        logger.info(f"Track calculator initialized with {len(self.config)} parameters")
+        logger.info(f"IGMM Track calculator initialized with {len(self.config)} parameters")
     
     
     def process_plot_batch(self, plots: List[PlotData]) -> Dict[str, TrackData]:
         """
-        Process a batch of plots and update tracks
+        Process a batch of plots using IGMM course modeling
         
         Args:
             plots: List of plot data to process
@@ -153,18 +172,61 @@ class TrackCalculator:
         """
         logger.info(f"Processing batch of {len(plots)} plots")
         
-        # Sort plots by timestamp
-        plots.sort(key=lambda p: p.timestamp)
-        
+        # Convert plots to IGMM format
+        igmm_plots = []
         for plot in plots:
-            self._process_single_plot(plot)
+            # Convert polar to cartesian
+            x, y = self._polar_to_cartesian(plot.range_m, plot.azimuth_deg)
+            igmm_plots.append({
+                'x': x,
+                'y': y,
+                'timestamp': plot.timestamp
+            })
         
-        # Update track states and perform maintenance
-        self._update_track_states()
-        self._perform_track_maintenance()
+        # Process using IGMM associator
+        igmm_tracks = self.igmm_associator.process_plots(igmm_plots)
         
+        # Convert IGMM tracks back to legacy format for compatibility
+        self.active_tracks = {}
+        for igmm_track in igmm_tracks:
+            if igmm_track.state in ["Confirmed", "Coasting"]:
+                # Set track state
+                if igmm_track.state == "Confirmed":
+                    track_state = TrackState.CONFIRMED
+                elif igmm_track.state == "Coasting":
+                    track_state = TrackState.COASTING
+                else:
+                    track_state = TrackState.TENTATIVE
+                
+                # Convert back to legacy TrackData format
+                track_data = TrackData(
+                    track_id=igmm_track.track_id,
+                    state=track_state,
+                    created_time=igmm_track.timestamp,
+                    last_update=igmm_track.timestamp,
+                    speed_ms=igmm_track.speed,
+                    heading_deg=igmm_track.heading,
+                    plot_count=igmm_track.plot_count,
+                    consecutive_misses=igmm_track.consecutive_misses,
+                    quality_score=igmm_track.quality_score
+                )
+                
+                # Set position in state vector [x, y, vx, vy]
+                track_data.state_vector[0] = igmm_track.x
+                track_data.state_vector[1] = igmm_track.y
+                track_data.velocity_x = igmm_track.speed * math.cos(math.radians(igmm_track.heading))
+                track_data.velocity_y = igmm_track.speed * math.sin(math.radians(igmm_track.heading))
+                track_data.state_vector[2] = track_data.velocity_x
+                track_data.state_vector[3] = track_data.velocity_y
+                
+                # Add to position history
+                track_data.position_history.append((igmm_track.x, igmm_track.y, igmm_track.timestamp))
+                
+                self.active_tracks[igmm_track.track_id] = track_data
+        
+        # Update statistics
         self.stats['total_plots_processed'] += len(plots)
-        logger.info(f"Batch processing complete. Active tracks: {len(self.active_tracks)}")
+        logger.info(f"IGMM batch processing complete. Active tracks: {len(self.active_tracks)}")
         
         return self.active_tracks.copy()
     
@@ -188,7 +250,11 @@ class TrackCalculator:
         else:
             # Associate with best candidate track
             best_track = self._select_best_association(candidates, x, y, plot.timestamp)
-            self._associate_plot_to_track(plot, best_track, x, y)
+            if best_track is not None:
+                self._associate_plot_to_track(plot, best_track, x, y)
+            else:
+                # No suitable track found, initiate new track
+                self._initiate_new_track(plot, x, y)
     
     
     def _find_association_candidates(self, x: float, y: float, timestamp: datetime) -> List[TrackData]:
@@ -222,7 +288,7 @@ class TrackCalculator:
     
     
     def _select_best_association(self, candidates: List[TrackData], x: float, y: float, 
-                               timestamp: datetime) -> TrackData:
+                               timestamp: datetime) -> TrackData | None:
         """
         Select the best track for association using nearest neighbor
         
@@ -232,7 +298,7 @@ class TrackCalculator:
             timestamp: Plot timestamp
             
         Returns:
-            Best track for association
+            Best track for association or None if no suitable candidates
         """
         best_track = None
         min_distance = float('inf')
